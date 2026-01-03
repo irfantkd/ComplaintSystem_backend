@@ -5,8 +5,7 @@ const { createComplaint } = require('../Controllers/VolunteerController')
 const authMiddleware = require('../middlewares/authMiddleware')
 
 
-router.post("/create-complain", authMiddleware, upload.single("image"), createComplaint);
-router.get("/upload", upload.single("image"), createComplaint);
+router.post("/volunteer/create-complain", authMiddleware, upload.single("image"), createComplaint);
 
 
 module.exports = router;
