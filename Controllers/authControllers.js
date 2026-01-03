@@ -3,12 +3,21 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 require('dotenv').config()
 
+
+
+const generateToken = (user) => {
+  return jwt.sign(
+    { id: user._id, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: "1d" }
+  );
+};
+
+
+
+
 const createUser = async (req, res) => {
   try {
-    // 1. Only DC can create users
-    
-
-    // 2. Extract data
     const {
       name,
       username,
@@ -82,51 +91,109 @@ const createUser = async (req, res) => {
   }
 };
 
-module.exports = { createUser };
 
 
 
-const signIn = async (req, res) => {
+
+/**
+ * Sign-in for Admin Dashboard roles:
+ * DC, DISTRICT_COUNCIL_OFFICER, AC, MC_COO
+ */
+const adminSignIn = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { username, password } = req.body;
+    console.log("This is request",req.body)
 
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
+    if (!username || !password) {
+      return res.status(400).json({ message: "Username and password are required" });
     }
 
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" });
+    const user = await User.findOne({ username });
+    if (!user) return res.status(400).json({ message: "Invalid credentials" });
+
+    // Only allow admin roles
+    const adminRoles = ["DC", "DISTRICT_COUNCIL_OFFICER", "AC", "MC_COO"];
+    if (!adminRoles.includes(user.role)) {
+      return res.status(403).json({ message: "Access denied: Not an admin user" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" });
-    }
+    if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
 
-    const token = jwt.sign({ id: user._id, role: user.role },process.env.JWT_SECRET ,{ expiresIn: "1d" });
+    const token = generateToken(user);
 
     res.status(200).json({
-      message: "Sign-in successful",
+      message: "Admin sign-in successful",
       token,
       user: {
         id: user._id,
         name: user.name,
+        username: user.username,
         role: user.role,
-        tehsil: user.tehsil,
-        email: user.email,
-        phone: user.phone,
+        zilaId: user.zilaId,
+        tehsilId: user.tehsilId,
+        mcId: user.mcId,
+        isActive: user.isActive,
       },
     });
+
   } catch (error) {
-    console.error(error);
+    console.error("Admin SignIn Error:", error.message);
     res.status(500).json({ message: "Server Error" });
   }
 };
 
 
+/**
+ * Sign-in for Field roles:
+ * MC_EMPLOYEE, VOLUNTEER
+ */
+const fieldSignIn = async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ message: "Username and password are required" });
+    }
+
+    const user = await User.findOne({ username });
+    if (!user) return res.status(400).json({ message: "Invalid credentials" });
+
+    
+    const fieldRoles = ["MC_EMPLOYEE", "VOLUNTEER"];
+    if (!fieldRoles.includes(user.role)) {
+      return res.status(403).json({ message: "Access denied: Not a field user" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
+
+    const token = generateToken(user);
+
+    res.status(200).json({
+      message: "Field user sign-in successful",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        username: user.username,
+        role: user.role,
+        zilaId: user.zilaId,
+        tehsilId: user.tehsilId,
+        mcId: user.mcId,
+        isActive: user.isActive,
+      },
+    });
+
+  } catch (error) {
+    console.error("Field SignIn Error:", error.message);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
 
 module.exports = {
   createUser,
-  signIn
-}
+  adminSignIn,
+  fieldSignIn,
+};
+
