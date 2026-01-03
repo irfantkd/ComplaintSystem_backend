@@ -58,6 +58,10 @@ const complaintSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
   },
+  seen:{
+    type: Boolean,
+    default: false
+  },
 
   status: {
     type: String,

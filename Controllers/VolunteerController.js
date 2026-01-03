@@ -1,4 +1,4 @@
-const Complaint = require('../models/complainModel')
+const Complaint = require('../models/complaintModel')
 const cloudinary = require("../config/cloudinaryConfig");
 const streamifier = require("streamifier");
 const User = require('../models/usersModel')
