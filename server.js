@@ -10,10 +10,12 @@ connectDb()
 
 
 const authRoutes = require('./Routes/authRoutes')
+const volunteerRoutes = require('./Routes/VolunteerRoutes')
 
 app.use(authRoutes)
+app.use(volunteerRoutes)
 
 
-app.listen(PORT,()=>{
+app.listen(PORT,"0.0.0.0",()=>{
     console.log("Server is running...")
 })

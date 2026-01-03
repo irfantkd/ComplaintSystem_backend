@@ -1,35 +1,43 @@
 const mongoose = require("mongoose");
 
-const userSchema = new mongoose.Schema(
-  {
-    name: { type: String, required: true },
+const userSchema = new mongoose.Schema({
+  name: { type: String, required: true },
 
-    role: {
-      type: String,
-      enum: ["DC", "AC", "MC", "FIELD", "VOLUNTEER"],
-      required: true,
-    },
+  username: { type: String, required: true, unique: true },
 
-    district: {
-      type: String,
-      default: "Lodhran",
-    },
+  password: { type: String, required: true },
 
-    tehsil: {
-      type: String,
-      enum: ["Lodhran", "Kahror Paka", "Dunyapur"],
-      required: function () {
-        return this.role !== "DC";
-      },
-    },
-
-    phone: String,
-    email: { type: String, unique: true },
-    password: String,
-
-    isActive: { type: Boolean, default: true },
+  role: {
+    type: String,
+    enum: [
+      "DC",
+      "DISTRICT_COUNCIL_OFFICER",
+      "AC",
+      "MC_COO",
+      "MC_EMPLOYEE",
+      "VOLUNTEER",
+    ],
+    required: true,
   },
-  { timestamps: true }
-);
+
+  zilaId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Zila",
+  },
+
+  tehsilId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Tehsil",
+  },
+
+  mcId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "MC",
+  },
+
+  isActive: { type: Boolean, default: true },
+
+  createdAt: { type: Date, default: Date.now },
+});
 
 module.exports = mongoose.model("User", userSchema);

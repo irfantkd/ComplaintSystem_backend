@@ -1,72 +1,89 @@
-const complaintSchema = new mongoose.Schema(
-  {
-    title: String,
-    description: String,
+const mongoose = require('mongoose')
 
-    images: {
-      before: String,
-      after: String,
-    },
+const complaintSchema = new mongoose.Schema({
+  title: String,
 
-    location: {
-      type: {
-        type: String,
-        enum: ["Point"],
-        default: "Point",
-      },
-      coordinates: {
-        type: [Number], // [lng, lat]
-        index: "2dsphere",
-      },
-    },
+  description: { type: String, required: true },
 
-    locationName: String,
-
-    category: String,
-
-    from: {
-      type: String,
-      enum: ["village", "city"],
-    },
-
-    tehsil: String,
-
-    status: {
-      type: String,
-      enum: [
-        "submitted",
-        "assigned",
-        "in-progress",
-        "resolved",
-        "approved",
-        "delayed",
-      ],
-      default: "submitted",
-    },
-
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    },
-
-    assignedAC: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    },
-
-    assignedMC: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    },
-
-    assignedEmployee: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    },
-
-    deadline: Date,
+  categoryId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "ComplaintCategory",
   },
-  { timestamps: true }
-);
+
+  images: [String],
+
+  location: {
+    type: {
+      type: String,
+      enum: ["Point"],
+      default: "Point",
+    },
+    coordinates: {
+      type: [Number], // [lng, lat]
+      required: true,
+    },
+  },
+
+  locationName: String,
+
+  areaType: {
+    type: String,
+    enum: ["Village", "City"],
+    required: true,
+  },
+
+  createdByVolunteerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+  },
+
+  zilaId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Zila",
+  },
+
+  tehsilId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Tehsil",
+  },
+
+  districtCouncilId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "DistrictCouncil",
+  },
+
+  assignedToRole: String,
+
+  assignedToUserId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+  },
+
+  status: {
+    type: String,
+    enum: [
+      "SUBMITTED",
+      "ASSIGNED",
+      "FORWARDED_TO_MC",
+      "ASSIGNED_TO_EMPLOYEE",
+      "IN_PROGRESS",
+      "RESOLVED",
+      "COMPLETED",
+      "DELAYED",
+      "REJECTED",
+    ],
+    default: "SUBMITTED",
+  },
+
+  deadline: Date,
+
+  resolutionImage: String,
+  resolutionNote: String,
+
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+});
+
+complaintSchema.index({ location: "2dsphere" });
 
 module.exports = mongoose.model("Complaint", complaintSchema);

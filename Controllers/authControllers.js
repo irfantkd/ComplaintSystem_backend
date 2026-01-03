@@ -5,48 +5,85 @@ require('dotenv').config()
 
 const createUser = async (req, res) => {
   try {
-    const requester = await User.findById(req.user.id);
-    if (!requester || requester.role !== "DC") {
-      return res.status(403).json({ message: "Only DC can create users" });
+    // 1. Only DC can create users
+    
+
+    // 2. Extract data
+    const {
+      name,
+      username,
+      password,
+      role,
+      zilaId,
+      tehsilId,
+      mcId,
+    } = req.body;
+
+    // 3. Basic validation
+    if (!name || !username || !password || !role ) {
+      return res.status(400).json({
+        message: "Missing required fields",
+      });
     }
 
-    const { name, role, tehsil, phone, email, password } = req.body;
-    if (!name || !role || (role !== "DC" && !tehsil) || !email || !password) {
-      return res.status(400).json({ message: "All required fields must be provided" });
+    // 4. Role-based required fields
+    if (["AC", "VOLUNTEER"].includes(role) && !tehsilId) {
+      return res.status(400).json({
+        message: `${role} must be assigned to a Tehsil`,
+      });
     }
 
-    const existingUser = await User.findOne({ email });
+    if (["MC_COO", "MC_EMPLOYEE"].includes(role) && (!tehsilId || !mcId)) {
+      return res.status(400).json({
+        message: `${role} must be assigned to Tehsil and MC`,
+      });
+    }
+
+    // 5. Check existing username
+    const existingUser = await User.findOne({ username });
     if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
+      return res.status(400).json({
+        message: "Username already exists",
+      });
     }
 
+    // 6. Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // 7. Create user
     const newUser = await User.create({
       name,
-      role,
-      tehsil,
-      phone,
-      email,
+      username,
       password: hashedPassword,
+      role,
+      zilaId,
+      tehsilId: tehsilId || undefined,
+      mcId: mcId || undefined,
     });
 
+    // 8. Response
     res.status(201).json({
       message: "User created successfully",
       user: {
         id: newUser._id,
         name: newUser.name,
+        username: newUser.username,
         role: newUser.role,
-        tehsil: newUser.tehsil,
-        email: newUser.email,
-        phone: newUser.phone,
+        zilaId: newUser.zilaId,
+        tehsilId: newUser.tehsilId,
+        mcId: newUser.mcId,
       },
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server Error" });
+    console.error("Create User Error:", error.message);
+    res.status(500).json({
+      message: error.message || "Server error",
+    });
   }
 };
+
+module.exports = { createUser };
+
 
 
 const signIn = async (req, res) => {
