@@ -95,5 +95,4 @@ const createComplaint = async (req, res) => {
 
 
 
-
 module.exports = { createComplaint };
