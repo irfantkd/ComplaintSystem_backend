@@ -84,9 +84,11 @@ const complaintSchema = new mongoose.Schema({
   resolutionImage: String,
   resolutionNote: String,
 
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
-});
+
+},{
+    timestamps: true, // ← Correct place: second argument (options)
+  }
+);
 
 complaintSchema.index({ location: "2dsphere" });
 

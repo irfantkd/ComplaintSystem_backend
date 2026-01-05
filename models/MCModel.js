@@ -20,6 +20,11 @@ const mcSchema = new mongoose.Schema({
       ref: "User", // role = MC_EMPLOYEE
     },
   ],
+  zilaId:{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Zila",
+    required: true,
+  },
 
   createdAt: { type: Date, default: Date.now },
 });
