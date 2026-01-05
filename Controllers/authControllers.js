@@ -16,80 +16,6 @@ const generateToken = (user) => {
 
 
 
-const createUser = async (req, res) => {
-  try {
-    const {
-      name,
-      username,
-      password,
-      role,
-      zilaId,
-      tehsilId,
-      mcId,
-    } = req.body;
-
-    // 3. Basic validation
-    if (!name || !username || !password || !role ) {
-      return res.status(400).json({
-        message: "Missing required fields",
-      });
-    }
-
-    // 4. Role-based required fields
-    if (["AC", "VOLUNTEER"].includes(role) && !tehsilId) {
-      return res.status(400).json({
-        message: `${role} must be assigned to a Tehsil`,
-      });
-    }
-
-    if (["MC_COO", "MC_EMPLOYEE"].includes(role) && (!tehsilId || !mcId)) {
-      return res.status(400).json({
-        message: `${role} must be assigned to Tehsil and MC`,
-      });
-    }
-
-    // 5. Check existing username
-    const existingUser = await User.findOne({ username });
-    if (existingUser) {
-      return res.status(400).json({
-        message: "Username already exists",
-      });
-    }
-
-    // 6. Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // 7. Create user
-    const newUser = await User.create({
-      name,
-      username,
-      password: hashedPassword,
-      role,
-      zilaId,
-      tehsilId: tehsilId || undefined,
-      mcId: mcId || undefined,
-    });
-
-    // 8. Response
-    res.status(201).json({
-      message: "User created successfully",
-      user: {
-        id: newUser._id,
-        name: newUser.name,
-        username: newUser.username,
-        role: newUser.role,
-        zilaId: newUser.zilaId,
-        tehsilId: newUser.tehsilId,
-        mcId: newUser.mcId,
-      },
-    });
-  } catch (error) {
-    console.error("Create User Error:", error.message);
-    res.status(500).json({
-      message: error.message || "Server error",
-    });
-  }
-};
 
 
 
@@ -192,7 +118,6 @@ const fieldSignIn = async (req, res) => {
 };
 
 module.exports = {
-  createUser,
   adminSignIn,
   fieldSignIn,
 };

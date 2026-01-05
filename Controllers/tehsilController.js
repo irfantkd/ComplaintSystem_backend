@@ -1,10 +1,13 @@
-const Tehsil = require('../models/tehsilModel')
-const User = require('../models/usersModel')
+const Tehsil = require('../models/tehsilModel');
+const User = require('../models/usersModel');
+const Zila = require('../models/zilaModel');
+const MC = require('../models/MCModel');
 
-
+/**
+ * Create a new Tehsil (Only DC can create)
+ */
 const createTehsil = async (req, res) => {
   try {
-    
     const user = await User.findById(req.user.id);
     if (!user || user.role !== "DC") {
       return res.status(403).json({
@@ -12,9 +15,7 @@ const createTehsil = async (req, res) => {
       });
     }
 
-    
-    const { name, zilaId } = req.body;
-
+    const { name, zilaId, acId } = req.body;
 
     if (!name || !zilaId) {
       return res.status(400).json({
@@ -22,7 +23,13 @@ const createTehsil = async (req, res) => {
       });
     }
 
-    
+    const zilaExists = await Zila.findById(zilaId);
+    if (!zilaExists) {
+      return res.status(404).json({
+        message: "Zila not found",
+      });
+    }
+
     const existingTehsil = await Tehsil.findOne({ name, zilaId });
     if (existingTehsil) {
       return res.status(400).json({
@@ -30,10 +37,24 @@ const createTehsil = async (req, res) => {
       });
     }
 
+    if (acId) {
+      const acUser = await User.findById(acId);
+      if (!acUser) {
+        return res.status(404).json({
+          message: "AC user not found",
+        });
+      }
+      if (acUser.role !== "AC") {
+        return res.status(400).json({
+          message: "Assigned user must have AC role",
+        });
+      }
+    }
 
     const tehsil = await Tehsil.create({
       name,
       zilaId,
+      acId: acId || undefined,
     });
 
     res.status(201).json({
@@ -42,6 +63,7 @@ const createTehsil = async (req, res) => {
         id: tehsil._id,
         name: tehsil.name,
         zilaId: tehsil.zilaId,
+        acId: tehsil.acId,
         createdAt: tehsil.createdAt,
       },
     });
@@ -49,8 +71,253 @@ const createTehsil = async (req, res) => {
     console.error("Create Tehsil Error:", error.message);
     res.status(500).json({
       message: "Server Error",
+      error: error.message,
     });
   }
 };
 
-module.exports = { createTehsil };
+
+const getAllTehsils = async (req, res) => {
+  try {
+    const { zilaId, search } = req.query;
+    let query = {};
+    if (zilaId) {
+      query.zilaId = zilaId;
+    }
+
+    // Search by name
+    if (search && search.trim() !== "") {
+      query.name = new RegExp(search.trim(), "i");
+    }
+
+    const tehsils = await Tehsil.find(query)
+      .populate('zilaId', 'name')
+      .populate('acId', 'name username role')
+      .populate('mcId', 'name')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      message: "Tehsils fetched successfully",
+      count: tehsils.length,
+      tehsils,
+    });
+  } catch (error) {
+    console.error("Get All Tehsils Error:", error.message);
+    res.status(500).json({
+      message: "Server Error",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get single Tehsil by ID
+ */
+const getTehsilById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const tehsil = await Tehsil.findById(id)
+      .populate('zilaId', 'name')
+      .populate('acId', 'name username role')
+      .populate('mcId', 'name');
+
+    if (!tehsil) {
+      return res.status(404).json({
+        message: "Tehsil not found",
+      });
+    }
+
+    res.status(200).json({
+      message: "Tehsil fetched successfully",
+      tehsil,
+    });
+  } catch (error) {
+    console.error("Get Tehsil By ID Error:", error.message);
+    res.status(500).json({
+      message: "Server Error",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Update Tehsil (Only DC can update)
+ */
+const updateTehsil = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user || user.role !== "DC") {
+      return res.status(403).json({
+        message: "Only DC can update a Tehsil",
+      });
+    }
+
+    const { id } = req.params;
+    const { name, acId, mcId } = req.body;
+
+    const tehsil = await Tehsil.findById(id);
+    if (!tehsil) {
+      return res.status(404).json({
+        message: "Tehsil not found",
+      });
+    }
+
+    if (name) {
+      const existingTehsil = await Tehsil.findOne({
+        name,
+        zilaId: tehsil.zilaId,
+        _id: { $ne: id },
+      });
+
+      if (existingTehsil) {
+        return res.status(400).json({
+          message: "Tehsil with this name already exists in this Zila",
+        });
+      }
+
+      tehsil.name = name;
+    }
+    if (acId !== undefined) {
+      if (acId === null || acId === "") {
+        tehsil.acId = undefined;
+      } else {
+        const acUser = await User.findById(acId);
+        if (!acUser) {
+          return res.status(404).json({
+            message: "AC user not found",
+          });
+        }
+        if (acUser.role !== "AC") {
+          return res.status(400).json({
+            message: "Assigned user must have AC role",
+          });
+        }
+        tehsil.acId = acId;
+      }
+    }
+
+
+    if (mcId !== undefined) {
+      if (mcId === null || mcId === "") {
+        tehsil.mcId = undefined;
+      } else {
+        const mc = await MC.findById(mcId);
+        if (!mc) {
+          return res.status(404).json({
+            message: "MC not found",
+          });
+        }
+        // Verify MC belongs to this Tehsil
+        if (mc.tehsilId.toString() !== id) {
+          return res.status(400).json({
+            message: "MC must belong to this Tehsil",
+          });
+        }
+        tehsil.mcId = mcId;
+      }
+    }
+
+    await tehsil.save();
+
+    const updatedTehsil = await Tehsil.findById(id)
+      .populate('zilaId', 'name')
+      .populate('acId', 'name username role')
+      .populate('mcId', 'name');
+
+    res.status(200).json({
+      message: "Tehsil updated successfully",
+      tehsil: updatedTehsil,
+    });
+  } catch (error) {
+    console.error("Update Tehsil Error:", error.message);
+    res.status(500).json({
+      message: "Server Error",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Delete Tehsil (Only DC can delete)
+ */
+const deleteTehsil = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user || user.role !== "DC") {
+      return res.status(403).json({
+        message: "Only DC can delete a Tehsil",
+      });
+    }
+
+    const { id } = req.params;
+
+    const tehsil = await Tehsil.findById(id);
+    if (!tehsil) {
+      return res.status(404).json({
+        message: "Tehsil not found",
+      });
+    }
+
+    const associatedUsers = await User.countDocuments({ tehsilId: id });
+    const associatedMCs = await MC.countDocuments({ tehsilId: id });
+
+    if (associatedUsers > 0 || associatedMCs > 0) {
+      return res.status(400).json({
+        message: `Cannot delete Tehsil. It has ${associatedUsers} associated users and ${associatedMCs} MCs`,
+      });
+    }
+
+    await Tehsil.findByIdAndDelete(id);
+
+    res.status(200).json({
+      message: "Tehsil deleted successfully",
+      deletedTehsil: {
+        id: tehsil._id,
+        name: tehsil.name,
+      },
+    });
+  } catch (error) {
+    console.error("Delete Tehsil Error:", error.message);
+    res.status(500).json({
+      message: "Server Error",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get all Zilas (Helper function)
+ */
+const getAllZilas = async (req, res) => {
+  try {
+    const zilas = await Zila.find().sort({ name: 1 });
+
+    if (!zilas || zilas.length === 0) {
+      return res.status(404).json({
+        message: "No Zilas found",
+      });
+    }
+
+    res.status(200).json({
+      message: "Successfully retrieved Zilas",
+      count: zilas.length,
+      data: zilas,
+    });
+  } catch (error) {
+    console.error("Get Zilas Error:", error.message);
+    res.status(500).json({
+      message: "Server Error",
+      error: error.message,
+    });
+  }
+};
+
+module.exports = {
+  createTehsil,
+  getAllTehsils,
+  getTehsilById,
+  updateTehsil,
+  deleteTehsil,
+  getAllZilas,
+};
