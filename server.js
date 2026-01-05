@@ -9,6 +9,7 @@ const authRoutes = require('./Routes/authRoutes')
 const volunteerRoutes = require('./Routes/VolunteerRoutes')
 const dcRoutes = require("./Routes/dcRoutes")
 const tehsilRoutes = require('./Routes/tehsilRoute')
+const districtCouncilRoutes = require('./Routes/DistrictCouncilRoutes')
 
 
 // Middleware
@@ -21,12 +22,10 @@ connectDb()
 
 
 app.use("/api",dcRoutes)
-
-
-
 app.use("/api",authRoutes)
 app.use("/api",volunteerRoutes)
 app.use("/api",tehsilRoutes)
+app.use('/api',districtCouncilRoutes)
 
 
 app.listen(PORT,"0.0.0.0",()=>{

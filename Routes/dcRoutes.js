@@ -4,6 +4,7 @@ const { getComplaintsForDC, deleteComplaintForDc,updateStatusForDc,updateUserSta
 const authMiddleware = require('../middlewares/authMiddleware');
 const {assignMCToCoo} = require("../controllers/dcControllers/mcController")
 
+router.post('/dc/createUser',authMiddleware,createUser)
 router.get('/dc/complaints',authMiddleware, getComplaintsForDC);
 router.delete('/dc/complaints/:complaintId',authMiddleware, deleteComplaintForDc);
 router.put('/dc/complaints/:complaintId',authMiddleware, updateStatusForDc);

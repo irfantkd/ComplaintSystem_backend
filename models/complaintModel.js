@@ -10,7 +10,7 @@ const complaintSchema = new mongoose.Schema({
     ref: "ComplaintCategory",
   },
 
-  images: [String],
+  images: String,
 
   location: {
     type: {
