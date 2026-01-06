@@ -1,16 +1,22 @@
-const notificationSchema = new mongoose.Schema(
-  {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    },
+const mongoose = require('mongoose')
 
-    title: String,
-    message: String,
-
-    isRead: { type: Boolean, default: false },
+const notificationSchema = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
   },
-  { timestamps: true }
-);
+
+  title: String,
+  message: String,
+
+  complaintId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Complaint",
+  },
+
+  isRead: { type: Boolean, default: false },
+
+  createdAt: { type: Date, default: Date.now },
+});
 
 module.exports = mongoose.model("Notification", notificationSchema);

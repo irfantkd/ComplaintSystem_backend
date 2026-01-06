@@ -3,10 +3,11 @@ const Route = express.Router()
 const authMiddleware = require('../middlewares/authMiddleware')
 
 
-const { createUser , signIn } = require('../Controllers/authControllers')
+const {adminSignIn,fieldSignIn } = require('../Controllers/authControllers')
 
-Route.post('/createUser',authMiddleware,createUser)
-Route.post('/signIn',signIn)
+
+Route.post('/admin/login',adminSignIn)
+Route.post('/fields/login',fieldSignIn)
 
 
 module.exports = Route
