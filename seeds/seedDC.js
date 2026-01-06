@@ -1,12 +1,12 @@
-// seeds/seedDC.js
-
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const Zila = require('../models/zilaModel');        // Your Zila model
-const User = require('../models/usersModel');       // Your User model (adjust filename if needed)
+const User = require('../models/usersModel');       // Your User model
+const Role = require('../models/roleModels');        // Your Role model
 require('dotenv').config();
 
-const MONGO_URI = process.env.MONGO_URL;
+// Use the env variable if available
+const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://irfantkd:pc120irfan@notetakeing.yze0q5w.mongodb.net/COMPLAINTSYSTEM";
 
 if (!MONGO_URI) {
   console.error('Error: MONGO_URI is not defined in .env file');
@@ -18,25 +18,37 @@ const seedDC = async () => {
     await mongoose.connect(MONGO_URI);
     console.log('MongoDB connected successfully for seeding DC');
 
-    // Find the existing Lodhran Zila
+    // Find Lodhran Zila
     const lodhranZila = await Zila.findOne({ name: 'Lodhran' });
     if (!lodhranZila) {
       console.error('Error: Zila "Lodhran" not found. Run seedZila.js first!');
       process.exit(1);
     }
 
-    // Hash a secure password (change this later!)
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash('12345678', saltRounds);  // Strong default password
+    // Find Role "DC" in RoleConfig
+    const roleConfig = await Role.findOne();
+    if (!roleConfig) {
+      console.error('Error: No roles found. Run seedRoles.js first!');
+      process.exit(1);
+    }
 
-    // Upsert the DC user (safe to run multiple times)
+    const dcRole = roleConfig.roles.find(r => r.name === 'DC');
+    if (!dcRole) {
+      console.error('Error: DC role not found in RoleConfig');
+      process.exit(1);
+    }
+
+    // Hash a secure password
+    const hashedPassword = await bcrypt.hash('12345678', 10);
+
+    // Upsert the DC user with roleId
     const dcUser = await User.findOneAndUpdate(
-      { username: 'dc_lodhran' },  // Unique username
+      { username: 'dc_lodhran' },  // unique username
       {
         name: 'Awais Afzal',
         username: 'dc_lodhran',
         password: hashedPassword,
-        role: 'DC',
+        roleId: dcRole._id,        // <-- reference the roleId
         zilaId: lodhranZila._id,
         isActive: true,
       },
