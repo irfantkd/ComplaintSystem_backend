@@ -8,6 +8,7 @@ const createMC = async (req, res) => {
     if (dcUser.role !== "DC") {
       return res.status(403).json({ message: "Access denied. DC only." });
     }
+
     const { name, tehsilId, zilaId } = req.body;
     const tehsil = await tehsilModel.findById(tehsilId);
     if (!tehsil) {
