@@ -1,6 +1,6 @@
-const DistrictCouncil = require('../models/DistrictCouncilModel');
-const User = require('../models/usersModel');
-const Zila = require('../models/zilaModel');
+const DistrictCouncil = require("../../models/DistrictCouncilModel");
+const User = require("../../models/usersModel");
+const Zila = require("../../models/zilaModel");
 
 /**
  * Create a new District Council (Only DC can create)
@@ -76,9 +76,9 @@ const getAllDistrictCouncils = async (req, res) => {
     }
 
     const districtCouncils = await DistrictCouncil.find(query)
-      .populate('zilaId', 'name')
-      .populate('officerId', 'name username role')
-      .populate('employeeIds', 'name username role')
+      .populate("zilaId", "name")
+      .populate("officerId", "name username role")
+      .populate("employeeIds", "name username role")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -103,9 +103,9 @@ const getDistrictCouncilById = async (req, res) => {
     const { id } = req.params;
 
     const districtCouncil = await DistrictCouncil.findById(id)
-      .populate('zilaId', 'name')
-      .populate('officerId', 'name username role')
-      .populate('employeeIds', 'name username role');
+      .populate("zilaId", "name")
+      .populate("officerId", "name username role")
+      .populate("employeeIds", "name username role");
 
     if (!districtCouncil) {
       return res.status(404).json({
@@ -125,7 +125,6 @@ const getDistrictCouncilById = async (req, res) => {
     });
   }
 };
-
 
 /**
  * Update District Council (Only DC can update)
@@ -160,9 +159,9 @@ const updateDistrictCouncil = async (req, res) => {
     await districtCouncil.save();
 
     const updatedCouncil = await DistrictCouncil.findById(id)
-      .populate('zilaId', 'name')
-      .populate('officerId', 'name username role')
-      .populate('employeeIds', 'name username role');
+      .populate("zilaId", "name")
+      .populate("officerId", "name username role")
+      .populate("employeeIds", "name username role");
 
     res.status(200).json({
       message: "District Council updated successfully",
@@ -176,7 +175,6 @@ const updateDistrictCouncil = async (req, res) => {
     });
   }
 };
-
 
 /**
  * Delete District Council (Only DC can delete)
@@ -323,8 +321,10 @@ const addEmployeeToCouncil = async (req, res) => {
     districtCouncil.employeeIds.push(employeeId);
     await districtCouncil.save();
 
-    const updatedCouncil = await DistrictCouncil.findById(councilId)
-      .populate('employeeIds', 'name username role');
+    const updatedCouncil = await DistrictCouncil.findById(councilId).populate(
+      "employeeIds",
+      "name username role"
+    );
 
     res.status(200).json({
       message: "Employee added to District Council successfully",
@@ -375,8 +375,10 @@ const removeEmployeeFromCouncil = async (req, res) => {
     );
     await districtCouncil.save();
 
-    const updatedCouncil = await DistrictCouncil.findById(councilId)
-      .populate('employeeIds', 'name username role');
+    const updatedCouncil = await DistrictCouncil.findById(councilId).populate(
+      "employeeIds",
+      "name username role"
+    );
 
     res.status(200).json({
       message: "Employee removed from District Council successfully",
