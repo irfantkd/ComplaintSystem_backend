@@ -6,8 +6,69 @@ const bcrypt = require("bcryptjs");
 const userModel = require("../../models/usersModel");
 const zillaModel = require("../../models/zilaModel");
 const tehsilModel = require("../../models/tehsilModel");
-const MCModel = require("../../models/mcModel");
 
+const createUser = async (req, res) => {
+  try {
+    const {
+      name,
+      username,
+      password,
+      role,
+      districtId,
+      tehsilId,
+      mcId,
+    } = req.body;
+
+    // 1️⃣ Basic validation
+    if (!name || !username || !password || !role) {
+      return res.status(400).json({
+        message: "Missing required fields",
+      });
+    }
+
+    
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+      return res.status(400).json({
+        message: "Username already exists",
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    
+    const newUser = await User.create({
+      name,
+      username,
+      password: hashedPassword,
+      role,
+      districtId: districtId ? districtId: null,
+      
+      tehsilId: tehsilId ? tehsilId : null,
+      mcId: mcId ?mcId:null,
+    });
+
+    
+    res.status(201).json({
+      message: "User created successfully",
+      user: {
+        id: newUser._id,
+        name: newUser.name,
+        username: newUser.username,
+        hashedPassword,
+        role: newUser.role,
+        districtId: newUser.districtId,
+        tehsilId: newUser.tehsilId,
+        mcId: newUser.mcId,
+      },
+    });
+  } catch (error) {
+    console.error("Create User Error:", error.message);
+    res.status(500).json({
+      message: error.message || "Server error",
+    });
+  }
+};
 
 const getComplaintsForDC = async (req, res) => {
   try {
@@ -356,141 +417,4 @@ const updateUserDetails =async(req,res)=>{
   } 
 }
 
-const createMC = async(req,res)=>{
-  try {
-    const dcUser = req.user;
-    if (dcUser.role !== "DC") {
-      return res.status(403).json({ message: "Access denied. DC only." });
-    }
-    const { name, tehsilId, zilaId} = req.body;
-    const tehsil = await tehsilModel.findById(tehsilId);
-    if(!tehsil){
-      return res.status(404).json({message:"Tehsil not found"})
-    }
-    const zila = await zillaModel.findById(zilaId);
-    if(!zila){
-      return res.status(404).json({message:"Zila not found"})
-    }
-    const mc = await MCModel.create({ name, tehsilId,zilaId })
-    res.status(201).json({message:"MC created successfully",mc})
-  } catch (error) {
-    console.error(error)
-    res.status(500).json({message:"Server error"})
-  }
-}
-
-
-// const createUserForDc = async (req, res) => {
-//   try {
-//     const dcUser = req.user;
-//     if (dcUser.role !== "DC") {
-//       return res.status(403).json({ message: "Access denied. DC only." });
-//     }
-
-//     // Assuming dcUser has zilaId populated
-//     if (!dcUser.zilaId) {
-//       return res
-//         .status(400)
-//         .json({ message: "DC user must be associated with a Zila." });
-//     }
-
-//     const { name, username, password, role, zilaId, tehsilId, mcId } = req.body;
-
-//     if (!name || !username || !password || !role) {
-//       return res.status(400).json({
-//         message: "Missing required fields: name, username, password, role.",
-//       });
-//     }
-
-//     // Prevent DC from creating another DC
-//     if (role === "DC") {
-//       return res.status(403).json({ message: "DC cannot create another DC." });
-//     }
-
-//     // Define which roles are allowed (exclude DC, or add more restrictions if needed)
-//     const allowedRoles = [
-//       "DISTRICT_COUNCIL_OFFICER",
-//       "AC",
-//       "MC_COO",
-//       "MC_EMPLOYEE",
-//       "VOLUNTEER",
-//     ];
-//     if (!allowedRoles.includes(role)) {
-//       return res.status(400).json({ message: "Invalid or unauthorized role." });
-//     }
-
-//     // Role-specific location rules
-//     let validatedZilaId = null;
-//     let validatedTehsilId = null;
-//     let validatedMcId = null;
-
-//     if (["DISTRICT_COUNCIL_OFFICER", "VOLUNTEER"].includes(role)) {
-//       validatedZilaId = dcUser.zilaId;
-//     } else if (role === "AC") {
-//       if (!tehsilId)
-//         return res
-//           .status(400)
-//           .json({ message: "tehsilId required for AC role." });
-//       const tehsil = await tehsilModel.findById(tehsilId);
-//       if (!tehsil)
-//         return res.status(404).json({ message: "Tehsil not found." });
-//       if (tehsil.zilaId.toString() !== dcUser.zilaId.toString()) {
-//         return res
-//           .status(403)
-//           .json({ message: "Tehsil does not belong to your district." });
-//       }
-//       validatedZilaId = tehsil.zilaId; // or dcUser.zilaId
-//       validatedTehsilId = tehsilId;
-//     } else if (["MC_COO", "MC_EMPLOYEE"].includes(role)) {
-//       if (!mcId)
-//         return res.status(400).json({ message: "mcId required for MC roles." });
-//       // Add validation: check MC belongs to DC's zila (you may need MC model)
-//       // Example:
-//       // const mc = await MC.findById(mcId);
-//       // if (mc.zilaId.toString() !== dcUser.zilaId.toString()) ...
-//       validatedMcId = mcId;
-//       // Set zilaId accordingly
-//     }
-
-//     // Check username uniqueness
-//     const existingUser = await userModel.findOne({ username });
-//     if (existingUser) {
-//       return res.status(400).json({ message: "Username already taken." });
-//     }
-
-//     // Hash password
-//     const salt = await bcrypt.genSalt(10);
-//     const hashedPassword = await bcrypt.hash(password, salt);
-
-//     // Create new user
-//     const newUser = new userModel({
-//       name,
-//       username,
-//       password: hashedPassword,
-//       role,
-//       zilaId: validatedZilaId || zilaId || dcUser.zilaId, // fallback
-//       tehsilId: validatedTehsilId || tehsilId,
-//       mcId: validatedMcId || mcId,
-//     });
-
-//     await newUser.save();
-
-//     res.status(201).json({
-//       message: "User created successfully",
-//       user: {
-//         id: newUser._id,
-//         name: newUser.name,
-//         username: newUser.username,
-//         role: newUser.role,
-//         zilaId: newUser.zilaId,
-//         tehsilId: newUser.tehsilId,
-//         mcId: newUser.mcId,
-//       },
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ message: "Server error" });
-//   }
-// };
-
-module.exports = { getComplaintsForDC, deleteComplaintForDc,updateStatusForDc,updateUserStatusForDC,getAllUsers,updateUserDetails,createMC };
+module.exports = { getComplaintsForDC, deleteComplaintForDc,updateStatusForDc,updateUserStatusForDC,getAllUsers,updateUserDetails ,createUser};
