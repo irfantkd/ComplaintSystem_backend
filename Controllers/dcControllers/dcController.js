@@ -4,7 +4,7 @@ const bcrypt = require("bcryptjs");
 const User = require("../../models/usersModel");
 const Zila = require("../../models/zilaModel");
 const Tehsil = require("../../models/tehsilModel");
-const MC = require('../../models/MCModel');
+const MC = require("../../models/MCModel");
 const Role = require("../../models/roleModels");
 
 /**
@@ -13,7 +13,7 @@ const Role = require("../../models/roleModels");
 const getRoleId = async (roleName) => {
   const roleConfig = await Role.findOne();
   if (!roleConfig) throw new Error("RoleConfig not found");
-  const role = roleConfig.roles.find(r => r.name === roleName);
+  const role = roleConfig.roles.find((r) => r.name === roleName);
   if (!role) throw new Error(`Role "${roleName}" not found`);
   return role._id.toString();
 };
@@ -26,18 +26,10 @@ const checkIsDC = async (user) => {
   return user.roleId.toString() === dcRoleId;
 };
 
-
 const createUser = async (req, res) => {
   try {
-    const {
-      name,
-      username,
-      password,
-      roleId,
-      districtId,
-      tehsilId,
-      mcId,
-    } = req.body;
+    const { name, username, password, roleId, districtId, tehsilId, mcId } =
+      req.body;
 
     // 1️⃣ Basic validation
     if (!name || !username || !password || !roleId) {
@@ -46,7 +38,6 @@ const createUser = async (req, res) => {
       });
     }
 
-    
     const existingUser = await User.findOne({ username });
     if (existingUser) {
       return res.status(400).json({
@@ -56,7 +47,6 @@ const createUser = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    
     const newUser = await User.create({
       name,
       username,
@@ -67,7 +57,6 @@ const createUser = async (req, res) => {
       mcId: mcId || undefined,
     });
 
-    
     res.status(201).json({
       message: "User created successfully",
       user: {
@@ -124,7 +113,10 @@ const getComplaintsForDC = async (req, res) => {
     }
 
     // Mark unseen complaints as seen
-    await Complaint.updateMany({ ...query, seen: false }, { $set: { seen: true, updatedAt: new Date() } });
+    await Complaint.updateMany(
+      { ...query, seen: false },
+      { $set: { seen: true, updatedAt: new Date() } }
+    );
 
     const result = await paginate({
       query,
@@ -160,19 +152,24 @@ const getComplaintsForDC = async (req, res) => {
 const deleteComplaintForDC = async (req, res) => {
   try {
     const dcUser = req.user;
-    if (!(await checkIsDC(dcUser))) return res.status(403).json({ message: "Access denied. DC only." });
+    if (!(await checkIsDC(dcUser)))
+      return res.status(403).json({ message: "Access denied. DC only." });
 
     const { complaintId } = req.params;
-    if (!complaintId) return res.status(400).json({ message: "Complaint ID is required." });
+    if (!complaintId)
+      return res.status(400).json({ message: "Complaint ID is required." });
 
     const complaint = await Complaint.findById(complaintId);
-    if (!complaint) return res.status(404).json({ message: "Complaint not found." });
+    if (!complaint)
+      return res.status(404).json({ message: "Complaint not found." });
     if (complaint.zilaId.toString() !== dcUser.zilaId.toString())
       return res.status(403).json({ message: "Access denied. DC only." });
 
     await Complaint.findByIdAndDelete(complaintId);
 
-    res.status(200).json({ message: "Complaint deleted successfully", complaint });
+    res
+      .status(200)
+      .json({ message: "Complaint deleted successfully", complaint });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
@@ -185,26 +182,48 @@ const deleteComplaintForDC = async (req, res) => {
 const updateStatusForDC = async (req, res) => {
   try {
     const dcUser = req.user;
-    if (!(await checkIsDC(dcUser))) return res.status(403).json({ message: "Access denied. DC only." });
+    if (!(await checkIsDC(dcUser)))
+      return res.status(403).json({ message: "Access denied. DC only." });
 
     const { complaintId } = req.params;
     const { status } = req.body;
 
     const allowedStatuses = [
-      "SUBMITTED", "ASSIGNED", "FORWARDED_TO_MC", "ASSIGNED_TO_EMPLOYEE",
-      "IN_PROGRESS", "RESOLVED", "COMPLETED", "DELAYED", "REJECTED",
+      "SUBMITTED",
+      "ASSIGNED",
+      "FORWARDED_TO_MC",
+      "ASSIGNED_TO_EMPLOYEE",
+      "IN_PROGRESS",
+      "RESOLVED",
+      "COMPLETED",
+      "DELAYED",
+      "REJECTED",
     ];
 
     if (!status || !allowedStatuses.includes(status))
-      return res.status(400).json({ message: `Invalid status. Must be one of: ${allowedStatuses.join(", ")}` });
+      return res
+        .status(400)
+        .json({
+          message: `Invalid status. Must be one of: ${allowedStatuses.join(
+            ", "
+          )}`,
+        });
 
-    const complaint = await Complaint.findOne({ _id: complaintId, zilaId: dcUser.zilaId });
-    if (!complaint) return res.status(404).json({ message: "Complaint not found or access denied." });
+    const complaint = await Complaint.findOne({
+      _id: complaintId,
+      zilaId: dcUser.zilaId,
+    });
+    if (!complaint)
+      return res
+        .status(404)
+        .json({ message: "Complaint not found or access denied." });
 
     complaint.status = status;
     await complaint.save();
 
-    res.status(200).json({ message: "Complaint status updated successfully", complaint });
+    res
+      .status(200)
+      .json({ message: "Complaint status updated successfully", complaint });
   } catch (error) {
     console.error("Error updating complaint status:", error);
     res.status(500).json({ message: "Server error", error: error.message });
@@ -217,18 +236,29 @@ const updateStatusForDC = async (req, res) => {
 const updateUserStatusForDC = async (req, res) => {
   try {
     const dcUser = req.user;
-    if (!(await checkIsDC(dcUser))) return res.status(403).json({ message: "Access denied. DC only." });
+    if (!(await checkIsDC(dcUser)))
+      return res.status(403).json({ message: "Access denied. DC only." });
 
     const { userId } = req.params;
     const { isActive } = req.body;
 
-    if (typeof isActive !== "boolean") return res.status(400).json({ message: "'isActive' must be true or false." });
+    if (typeof isActive !== "boolean")
+      return res
+        .status(400)
+        .json({ message: "'isActive' must be true or false." });
 
     const user = await User.findOne({ _id: userId, zilaId: dcUser.zilaId });
-    if (!user) return res.status(404).json({ message: "User not found or does not belong to your district." });
+    if (!user)
+      return res
+        .status(404)
+        .json({
+          message: "User not found or does not belong to your district.",
+        });
 
     if (user._id.toString() === dcUser._id.toString())
-      return res.status(400).json({ message: "You cannot deactivate your own account." });
+      return res
+        .status(400)
+        .json({ message: "You cannot deactivate your own account." });
 
     user.isActive = isActive;
     await user.save();
@@ -256,7 +286,8 @@ const updateUserStatusForDC = async (req, res) => {
 const getAllUsersForDC = async (req, res) => {
   try {
     const dcUser = req.user;
-    if (!(await checkIsDC(dcUser))) return res.status(403).json({ message: "Access denied. DC only." });
+    if (!(await checkIsDC(dcUser)))
+      return res.status(403).json({ message: "Access denied. DC only." });
 
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -270,13 +301,24 @@ const getAllUsersForDC = async (req, res) => {
     }
 
     if (roleId && roleId !== "ALL") query.roleId = roleId;
-    if (isActive !== undefined && isActive !== "") query.isActive = isActive === "true" || isActive === true;
+    if (isActive !== undefined && isActive !== "")
+      query.isActive = isActive === "true" || isActive === true;
 
-    const result = await paginate({ query, model: User, page, limit, sort: { createdAt: -1 } });
+    const result = await paginate({
+      query,
+      model: User,
+      page,
+      limit,
+      sort: { createdAt: -1 },
+    });
 
     res.status(200).json({
       message: "Users fetched successfully",
-      filtersApplied: { search: search || null, roleId: roleId || null, isActive: isActive !== undefined ? isActive : null },
+      filtersApplied: {
+        search: search || null,
+        roleId: roleId || null,
+        isActive: isActive !== undefined ? isActive : null,
+      },
       ...result,
     });
   } catch (error) {
@@ -291,10 +333,12 @@ const getAllUsersForDC = async (req, res) => {
 const updateUserDetails = async (req, res) => {
   try {
     const dcUser = req.user;
-    if (!(await checkIsDC(dcUser))) return res.status(403).json({ message: "Access denied. DC only." });
+    if (!(await checkIsDC(dcUser)))
+      return res.status(403).json({ message: "Access denied. DC only." });
 
     const { userId } = req.params;
-    const { name, username, password, roleId, zilaId, tehsilId, mcId } = req.body;
+    const { name, username, password, roleId, zilaId, tehsilId, mcId } =
+      req.body;
 
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
@@ -325,7 +369,8 @@ const updateUserDetails = async (req, res) => {
 const createMC = async (req, res) => {
   try {
     const dcUser = req.user;
-    if (!(await checkIsDC(dcUser))) return res.status(403).json({ message: "Access denied. DC only." });
+    if (!(await checkIsDC(dcUser)))
+      return res.status(403).json({ message: "Access denied. DC only." });
 
     const { name, tehsilId, zilaId } = req.body;
     const tehsil = await Tehsil.findById(tehsilId);
@@ -349,5 +394,5 @@ module.exports = {
   getAllUsersForDC,
   updateUserDetails,
   createMC,
-  createUser
+  createUser,
 };

@@ -1,15 +1,26 @@
 const MCModel = require("../../models/MCModel");
 const userModel = require("../../models/usersModel");
+const Role = require("../../models/roleModels");
+
+const getRoleId = async (roleName) => {
+  const roleConfig = await Role.findOne();
+  if (!roleConfig) throw new Error("RoleConfig not found");
+  const role = roleConfig.roles.find((r) => r.name === roleName);
+  if (!role) throw new Error(`Role "${roleName}" not found`);
+  return role._id.toString();
+};
 
 const createMC = async (req, res) => {
   try {
-    const dcUser = req.user;
-
-    if (dcUser.role !== "DC") {
-      return res.status(403).json({ message: "Access denied. DC only." });
-    }
-
     const { name, tehsilId, zilaId } = req.body;
+    const roleId = getRoleId("DC");
+    const user = await userModel.findById(req.user.id);
+
+    if (user.roleId.toString() !== roleId) {
+      return res.status(403).json({
+        message: "Access denied",
+      });
+    }
     const tehsil = await tehsilModel.findById(tehsilId);
     if (!tehsil) {
       return res.status(404).json({ message: "Tehsil not found" });
@@ -28,9 +39,13 @@ const createMC = async (req, res) => {
 
 const deleteMc = async (req, res) => {
   try {
-    const dcUser = req.user;
-    if (dcUser.role !== "DC") {
-      return res.status(403).json({ message: "Access denied. DC only." });
+    const roleId = getRoleId("DC");
+    const user = await userModel.findById(req.user.id);
+
+    if (user.roleId.toString() !== roleId) {
+      return res.status(403).json({
+        message: "Access denied",
+      });
     }
     const { mcId } = req.params;
     if (!mcId) {
@@ -67,9 +82,13 @@ const deleteMc = async (req, res) => {
 
 const getAllMcForDc = async (req, res) => {
   try {
-    const dcUser = req.user;
-    if (dcUser.role !== "DC") {
-      return res.status(403).json({ message: "Access denied. DC only." });
+    const roleId = getRoleId("DC");
+    const user = await userModel.findById(req.user.id);
+
+    if (user.roleId.toString() !== roleId) {
+      return res.status(403).json({
+        message: "Access denied",
+      });
     }
     const mcs = await MCModel.find({ zilaId: dcUser.zilaId });
     return res
@@ -84,9 +103,13 @@ const getAllMcForDc = async (req, res) => {
 };
 const getMcByIdForDc = async (req, res) => {
   try {
-    const dcUser = req.user;
-    if (dcUser.role !== "DC") {
-      return res.status(403).json({ message: "Access denied. DC only." });
+    const roleId = getRoleId("DC");
+    const user = await userModel.findById(req.user.id);
+
+    if (user.roleId.toString() !== roleId) {
+      return res.status(403).json({
+        message: "Access denied",
+      });
     }
     const { mcId } = req.params;
     if (!mcId) {
@@ -116,6 +139,14 @@ const updateMcForDc = async (req, res) => {
   try {
     const { mcId } = req.params;
     const updates = req.body;
+    const roleId = getRoleId("DC");
+    const user = await userModel.findById(req.user.id);
+
+    if (user.roleId.toString() !== roleId) {
+      return res.status(403).json({
+        message: "Access denied",
+      });
+    }
 
     // Validate ObjectId
     if (!mongoose.Types.ObjectId.isValid(mcId)) {
