@@ -26,68 +26,6 @@ const checkIsDC = async (user) => {
   return user.roleId.toString() === dcRoleId;
 };
 
-const createUser = async (req, res) => {
-  try {
-    const {
-      name,
-      username,
-      password,
-      role,
-      districtId,
-      tehsilId,
-      mcId,
-    } = req.body;
-
-    // 1️⃣ Basic validation
-    if (!name || !username || !password || !role) {
-      return res.status(400).json({
-        message: "Missing required fields",
-      });
-    }
-
-    
-    const existingUser = await User.findOne({ username });
-    if (existingUser) {
-      return res.status(400).json({
-        message: "Username already exists",
-      });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    
-    const newUser = await User.create({
-      name,
-      username,
-      password: hashedPassword,
-      role,
-      districtId: districtId ? districtId: null,
-      
-      tehsilId: tehsilId ? tehsilId : null,
-      mcId: mcId ?mcId:null,
-    });
-
-    
-    res.status(201).json({
-      message: "User created successfully",
-      user: {
-        id: newUser._id,
-        name: newUser.name,
-        username: newUser.username,
-        hashedPassword,
-        role: newUser.role,
-        districtId: newUser.districtId,
-        tehsilId: newUser.tehsilId,
-        mcId: newUser.mcId,
-      },
-    });
-  } catch (error) {
-    console.error("Create User Error:", error.message);
-    res.status(500).json({
-      message: error.message || "Server error",
-    });
-  }
-};
 
 const createUser = async (req, res) => {
   try {

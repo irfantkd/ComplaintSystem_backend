@@ -2,12 +2,14 @@ const express = require("express");
 const router = express.Router();
 const {
   getComplaintsForDC,
-  deleteComplaintForDc,
-  updateStatusForDc,
+  
   updateUserStatusForDC,
-  getAllUsers,
+  
   updateUserDetails,
   createUser,
+  updateStatusForDC,
+  getAllUsersForDC,
+  deleteComplaintForDC,
 } = require("../Controllers/dcControllers/dcController");
 const authMiddleware = require("../middlewares/authMiddleware");
 const {
@@ -23,11 +25,11 @@ router.get("/dc/complaints", authMiddleware, getComplaintsForDC);
 router.delete(
   "/dc/complaints/:complaintId",
   authMiddleware,
-  deleteComplaintForDc
+  deleteComplaintForDC
 );
-router.put("/dc/complaints/:complaintId", authMiddleware, updateStatusForDc);
+router.put("/dc/complaints/:complaintId", authMiddleware, updateStatusForDC);
 router.put("/dc/users/:userId/status", authMiddleware, updateUserStatusForDC);
-router.get("/dc/users", authMiddleware, getAllUsers);
+router.get("/dc/users", authMiddleware, getAllUsersForDC);
 router.put("/dc/users/:userId/update", authMiddleware, updateUserDetails);
 router.post("/dc/create-mc", authMiddleware, createMC);
 router.get("/dc/all/mcs", authMiddleware, getAllMcForDc);
