@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const Zila = require('../models/zilaModel');
 require('dotenv').config();
 
-const MONGO_URI = process.env.MONGO_URL;
+const MONGO_URI = "mongodb+srv://irfantkd:pc120irfan@notetakeing.yze0q5w.mongodb.net/COMPLAINTSYSTEM";
 
 if (!MONGO_URI) {
   console.error('Error: MONGO_URI is not defined in .env file');

@@ -1,6 +1,5 @@
 const Complaint = require("../models/complaintModel");
 const User = require("../models/usersModel");
-const MC = require("../models/MCModel");
 const { paginate } = require("../utils/pagination");
 
 /**
@@ -15,21 +14,17 @@ const getComplaintsForAC = async (req, res) => {
     }
 
     if (!acUser.tehsilId) {
-      return res.status(400).json({ message: "AC must be assigned to a Tehsil" });
+      return res
+        .status(400)
+        .json({ message: "AC must be assigned to a Tehsil" });
     }
 
     // Query parameters
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
 
-    const {
-      search,
-      status,
-      categoryId,
-      startDate,
-      endDate,
-      areaType,
-    } = req.query;
+    const { search, status, categoryId, startDate, endDate, areaType } =
+      req.query;
 
     // Build dynamic query
     let query = { tehsilId: acUser.tehsilId };
@@ -108,8 +103,6 @@ const getComplaintsForAC = async (req, res) => {
   }
 };
 
-
-
 /**
  * Approve complaint resolution
  */
@@ -131,22 +124,22 @@ const approveResolution = async (req, res) => {
 
     // Verify complaint belongs to AC's tehsil
     if (complaint.tehsilId.toString() !== acUser.tehsilId.toString()) {
-      return res.status(403).json({ 
-        message: "Cannot approve complaint from different Tehsil" 
+      return res.status(403).json({
+        message: "Cannot approve complaint from different Tehsil",
       });
     }
 
     // Check if complaint is in RESOLVED status
     if (complaint.status !== "RESOLVED") {
-      return res.status(400).json({ 
-        message: "Only RESOLVED complaints can be approved" 
+      return res.status(400).json({
+        message: "Only RESOLVED complaints can be approved",
       });
     }
 
     // Update complaint to COMPLETED
     complaint.status = "COMPLETED";
     complaint.updatedAt = new Date();
-    
+
     await complaint.save();
 
     res.status(200).json({
@@ -181,7 +174,9 @@ const rejectResolution = async (req, res) => {
     }
 
     if (!remark) {
-      return res.status(400).json({ message: "Remark is required for rejection" });
+      return res
+        .status(400)
+        .json({ message: "Remark is required for rejection" });
     }
 
     // Find the complaint
@@ -192,15 +187,15 @@ const rejectResolution = async (req, res) => {
 
     // Verify complaint belongs to AC's tehsil
     if (complaint.tehsilId.toString() !== acUser.tehsilId.toString()) {
-      return res.status(403).json({ 
-        message: "Cannot reject complaint from different Tehsil" 
+      return res.status(403).json({
+        message: "Cannot reject complaint from different Tehsil",
       });
     }
 
     // Check if complaint is in RESOLVED status
     if (complaint.status !== "RESOLVED") {
-      return res.status(400).json({ 
-        message: "Only RESOLVED complaints can be rejected" 
+      return res.status(400).json({
+        message: "Only RESOLVED complaints can be rejected",
       });
     }
 
@@ -210,9 +205,9 @@ const rejectResolution = async (req, res) => {
     } else {
       complaint.status = "REJECTED";
     }
-    
+
     complaint.updatedAt = new Date();
-    
+
     await complaint.save();
 
     res.status(200).json({
@@ -233,8 +228,6 @@ const rejectResolution = async (req, res) => {
   }
 };
 
-
-
 /**
  * Get statistics for AC dashboard
  */
@@ -247,7 +240,9 @@ const getACDashboardStats = async (req, res) => {
     }
 
     if (!acUser.tehsilId) {
-      return res.status(400).json({ message: "AC must be assigned to a Tehsil" });
+      return res
+        .status(400)
+        .json({ message: "AC must be assigned to a Tehsil" });
     }
 
     const baseQuery = { tehsilId: acUser.tehsilId };

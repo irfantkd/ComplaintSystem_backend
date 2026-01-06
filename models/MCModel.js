@@ -29,4 +29,5 @@ const mcSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-module.exports = mongoose.model("MC", mcSchema);
+// module.exports = mongoose.model("MC", mcSchema);
+module.exports = mongoose.models.MC || mongoose.model("MC", mcSchema);

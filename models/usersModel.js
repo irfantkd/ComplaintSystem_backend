@@ -7,16 +7,8 @@ const userSchema = new mongoose.Schema({
 
   password: { type: String, required: true },
 
-  role: {
-    type: String,
-    enum: [
-      "DC",
-      "DISTRICT_COUNCIL_OFFICER",
-      "AC",
-      "MC_COO",
-      "MC_EMPLOYEE",
-      "VOLUNTEER",
-    ],
+  roleId: {
+    type: mongoose.Schema.Types.ObjectId,
     required: true,
   },
 
@@ -40,4 +32,6 @@ const userSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-module.exports = mongoose.model("User", userSchema);
+module.exports =
+  mongoose.models.User ||
+  mongoose.model("User", userSchema);
