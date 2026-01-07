@@ -13,6 +13,7 @@ const tehsilRoutes = require("./Routes/tehsilRoute");
 const districtCouncilRoutes = require("./Routes/DistrictCouncilRoutes");
 const AcRoutes = require("./Routes/ACRoutes");
 const districtCouncilUserRoutes = require("./Routes/districtCouncilUserRoutes");
+const mcCooRoutes = require("./Routes/mcCooRoutes");
 
 // Middleware
 app.use(cors());
@@ -28,6 +29,7 @@ app.use("/api", districtCouncilRoutes);
 app.use("/api", AcRoutes);
 app.use("/api", rolesRoutes);
 app.use("/api", districtCouncilUserRoutes);
+app.use("/api", mcCooRoutes);
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log("Server is running...");
