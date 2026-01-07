@@ -94,7 +94,7 @@ const createComplaint = async (req, res) => {
       zilaId,
       tehsilId,
       districtCouncilId,
-      status: "SUBMITTED",
+      status: "pending",
     });
 
     // 🔔 Get roleIds for notifications
