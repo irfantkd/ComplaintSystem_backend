@@ -31,7 +31,12 @@ const userSchema = new mongoose.Schema({
 
   createdAt: { type: Date, default: Date.now },
 });
+// Virtual to populate role name easily
+userSchema.virtual("role", {
+  ref: "Role",
+  localField: "roleId",
+  foreignField: "roles._id",
+  justOne: true,
+});
 
-module.exports =
-  mongoose.models.User ||
-  mongoose.model("User", userSchema);
+module.exports = mongoose.models.User || mongoose.model("User", userSchema);

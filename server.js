@@ -17,6 +17,7 @@ const tehsilRoutes = require("./Routes/tehsilRoute");
 const districtCouncilRoutes = require("./Routes/DistrictCouncilRoutes");
 const AcRoutes = require("./Routes/ACRoutes");
 const districtCouncilUserRoutes = require("./Routes/districtCouncilUserRoutes");
+const mcCooRoutes = require("./Routes/mcCooRoutes");
 
 // Middleware
 app.use(cors());
@@ -26,6 +27,7 @@ connectDb();
 
 
 app.use("/api", districtCouncilUserRoutes);
+app.use("/api", mcCooRoutes);
 
 
 

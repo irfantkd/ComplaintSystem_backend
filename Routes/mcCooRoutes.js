@@ -1,29 +1,32 @@
+const express = require("express");
+const router = express.Router();
 const {
   getComplaintsForMcCoo,
   getMcEmployees,
   assignTaskToMcEmployee,
   updateComplaintStatusByMcCoo,
   checkIsMcCoo,
-} = require("../controllers/mcCooController");
-const { authMiddleware } = require("../middleware/authMiddleware"); // your JWT middleware
+} = require("../Controllers/municipalComitteCEO/mcCooController");
+const authMiddleware = require("../middlewares/authMiddleware"); // your JWT middleware
 
 // MC COO Routes
 router.get(
   "/mc-coo/complaints",
   authMiddleware,
-  checkIsMcCoo,
+
   getComplaintsForMcCoo
 );
-router.get("/mc-coo/employees", authMiddleware, checkIsMcCoo, getMcEmployees);
+router.get("/mc-coo/employees", authMiddleware, getMcEmployees);
 router.post(
   "/mc-coo/assign-task",
   authMiddleware,
-  checkIsMcCoo,
+
   assignTaskToMcEmployee
 );
 router.post(
   "/mc-coo/update-status",
   authMiddleware,
-  checkIsMcCoo,
+
   updateComplaintStatusByMcCoo
 );
+module.exports = router;
