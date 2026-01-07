@@ -195,21 +195,27 @@ exports.deactivateCategory = async (req, res) => {
       });
     }
 
-    category.isActive = false;
+    // ✅ Proper toggle
+    category.isActive = !category.isActive;
+
     await category.save();
 
     res.status(200).json({
       success: true,
-      message: 'Category deactivated successfully',
+      message: category.isActive ? 'Category activated successfully' : 'Category deactivated successfully',
       data: category
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Error deactivating category',
+      message: 'Error toggling category',
       error: error.message
     });
   }
 };
+
+
+
+
 
 // routes/complaintCategoryRoutes.js

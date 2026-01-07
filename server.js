@@ -12,6 +12,7 @@ const dcRoutes = require("./Routes/dcRoutes")
 const tehsilRoutes = require('./Routes/tehsilRoute')
 const districtCouncilRoutes = require('./Routes/DistrictCouncilRoutes')
 const AcRoutes = require('./Routes/ACRoutes')
+const complainCategoryRoutes = require('./Routes/ComplainCategoryRoutes')
 
 
 // Middleware
@@ -29,7 +30,8 @@ app.use("/api",volunteerRoutes)
 app.use("/api",tehsilRoutes)
 app.use('/api',districtCouncilRoutes)
 app.use('/api',AcRoutes)
-app.use('/api/',rolesRoutes)
+app.use('/api',rolesRoutes)
+app.use('/api',complainCategoryRoutes)
 
 
 app.listen(PORT,"0.0.0.0",()=>{

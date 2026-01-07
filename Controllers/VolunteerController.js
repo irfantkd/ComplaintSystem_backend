@@ -3,6 +3,18 @@ const Notification = require("../models/notificationModel");
 const cloudinary = require("../config/cloudinaryConfig");
 const streamifier = require("streamifier");
 const User = require("../models/usersModel");
+const Role = require("../models/roleModels");
+
+/**
+ * Helper: Get roleId by role name
+ */
+const getRoleId = async (roleName) => {
+  const roleConfig = await Role.findOne();
+  if (!roleConfig) throw new Error("Role config not found");
+  const role = roleConfig.roles.find(r => r.name === roleName);
+  if (!role) throw new Error(`Role "${roleName}" not found`);
+  return role._id.toString();
+};
 
 const createComplaint = async (req, res) => {
   try {
@@ -21,13 +33,12 @@ const createComplaint = async (req, res) => {
       districtCouncilId,
     } = req.body;
 
-    // 🔐 Volunteer validation
+    // 🔐 Volunteer validation using roleId
     const user = await User.findById(volunteerId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-    if (user.role !== "VOLUNTEER") {
+    const volunteerRoleId = await getRoleId("VOLUNTEER");
+    if (user.roleId.toString() !== volunteerRoleId) {
       return res.status(403).json({
         message: "Only volunteers can create complaints",
       });
@@ -51,9 +62,7 @@ const createComplaint = async (req, res) => {
     }
 
     if (!req.file) {
-      return res.status(400).json({
-        message: "Complaint image is required",
-      });
+      return res.status(400).json({ message: "Complaint image is required" });
     }
 
     // ☁️ Cloudinary Upload (Buffer → Stream)
@@ -78,10 +87,7 @@ const createComplaint = async (req, res) => {
       description,
       categoryId,
       images: uploadResult.secure_url,
-      location: {
-        type: "Point",
-        coordinates: [Number(longitude), Number(latitude)],
-      },
+      location: { type: "Point", coordinates: [Number(longitude), Number(latitude)] },
       locationName,
       areaType,
       createdByVolunteerId: volunteerId,
@@ -91,32 +97,17 @@ const createComplaint = async (req, res) => {
       status: "SUBMITTED",
     });
 
-    // 🔔 FIND OFFICERS TO NOTIFY
+    // 🔔 Get roleIds for notifications
+    const dcRoleId = await getRoleId("DC");
+    const acRoleId = await getRoleId("AC");
+    const mcCooRoleId = await getRoleId("MC_COO");
 
-    // DC (District level)
-    const dcUsers = await User.find({
-      role: "DC",
-      zilaId,
-    });
+    // 🔔 Fetch officers using roleIds
+    const dcUsers = await User.find({ roleId: dcRoleId, zilaId });
+    const acUsers = await User.find({ roleId: acRoleId, tehsilId });
+    const mcCooUsers = await User.find({ roleId: mcCooRoleId, $or: [{ tehsilId }, { districtCouncilId }] });
 
-    // AC (Tehsil level)
-    const acUsers = await User.find({
-      role: "AC",
-      tehsilId,
-    });
-
-    // MC COO (Municipal / District Council)
-    const mcCooUsers = await User.find({
-      role: "MC_COO",
-      $or: [{ tehsilId }, { districtCouncilId }],
-    });
-
-    // Combine all officers
-    const officersToNotify = [
-      ...dcUsers,
-      ...acUsers,
-      ...mcCooUsers,
-    ];
+    const officersToNotify = [...dcUsers, ...acUsers, ...mcCooUsers];
 
     // 🔔 Create Notifications
     const notifications = officersToNotify.map((officer) => ({
@@ -130,7 +121,7 @@ const createComplaint = async (req, res) => {
       await Notification.insertMany(notifications);
     }
 
-    // ✅ Final Response
+    // ✅ Response
     return res.status(201).json({
       success: true,
       message: "Complaint submitted successfully",
