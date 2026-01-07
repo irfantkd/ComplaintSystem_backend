@@ -2,6 +2,17 @@ const DistrictCouncil = require("../../models/DistrictCouncilModel");
 const User = require("../../models/usersModel");
 const Zila = require("../../models/zilaModel");
 
+
+
+const getRoleId = async (roleName) => {
+  const roleConfig = await Role.findOne();
+  if (!roleConfig) throw new Error('RoleConfig not found');
+  const role = roleConfig.roles.find(r => r.name === roleName);
+  if (!role) throw new Error(`Role "${roleName}" not found`);
+  return role._id.toString();
+};
+
+
 /**
  * Create a new District Council (Only DC can create)
  * Only name and zilaId are required - Officer is assigned separately
@@ -9,7 +20,9 @@ const Zila = require("../../models/zilaModel");
 const createDistrictCouncil = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
-    if (!user || user.role !== "DC") {
+    const dcRoleId = await getRoleId("DC");
+
+    if (!user || user.roleId.toString() !== dcRoleId) {
       return res.status(403).json({
         message: "Only DC can create a District Council",
       });
@@ -23,15 +36,11 @@ const createDistrictCouncil = async (req, res) => {
       });
     }
 
-    // Verify Zila exists
     const zilaExists = await Zila.findById(zilaId);
     if (!zilaExists) {
-      return res.status(404).json({
-        message: "Zila not found",
-      });
+      return res.status(404).json({ message: "Zila not found" });
     }
 
-    // Check if District Council already exists for this Zila
     const existingCouncil = await DistrictCouncil.findOne({ zilaId });
     if (existingCouncil) {
       return res.status(400).json({
@@ -47,20 +56,14 @@ const createDistrictCouncil = async (req, res) => {
 
     res.status(201).json({
       message: "District Council created successfully",
-      districtCouncil: {
-        id: districtCouncil._id,
-        name: districtCouncil.name,
-        zilaId: districtCouncil.zilaId,
-      },
+      districtCouncil,
     });
   } catch (error) {
     console.error("Create District Council Error:", error.message);
-    res.status(500).json({
-      message: "Server Error",
-      error: error.message,
-    });
+    res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
+
 
 /**
  * Get all District Councils (with optional filters)
@@ -132,7 +135,9 @@ const getDistrictCouncilById = async (req, res) => {
 const updateDistrictCouncil = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
-    if (!user || user.role !== "DC") {
+    const dcRoleId = await getRoleId("DC");
+
+    if (!user || user.roleId.toString() !== dcRoleId) {
       return res.status(403).json({
         message: "Only DC can update a District Council",
       });
@@ -154,7 +159,6 @@ const updateDistrictCouncil = async (req, res) => {
       });
     }
 
-    // Update name only
     districtCouncil.name = name;
     await districtCouncil.save();
 
@@ -165,14 +169,11 @@ const updateDistrictCouncil = async (req, res) => {
 
     res.status(200).json({
       message: "District Council updated successfully",
-      districtCouncil: updatedCouncil,
+      districtCouncil,
     });
   } catch (error) {
     console.error("Update District Council Error:", error.message);
-    res.status(500).json({
-      message: "Server Error",
-      error: error.message,
-    });
+    res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
 
@@ -182,7 +183,9 @@ const updateDistrictCouncil = async (req, res) => {
 const deleteDistrictCouncil = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
-    if (!user || user.role !== "DC") {
+    const dcRoleId = await getRoleId("DC");
+
+    if (!user || user.roleId.toString() !== dcRoleId) {
       return res.status(403).json({
         message: "Only DC can delete a District Council",
       });
@@ -201,19 +204,14 @@ const deleteDistrictCouncil = async (req, res) => {
 
     res.status(200).json({
       message: "District Council deleted successfully",
-      deletedCouncil: {
-        id: districtCouncil._id,
-        zilaId: districtCouncil.zilaId,
-      },
+      deletedCouncil: districtCouncil._id,
     });
   } catch (error) {
     console.error("Delete District Council Error:", error.message);
-    res.status(500).json({
-      message: "Server Error",
-      error: error.message,
-    });
+    res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
+
 
 /**
  * Assign Officer to District Council
@@ -221,38 +219,27 @@ const deleteDistrictCouncil = async (req, res) => {
 const assignOfficerToCouncil = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
-    if (!user || user.role !== "DC") {
+    const dcRoleId = await getRoleId("DC");
+    const officerRoleId = await getRoleId("DISTRICT_COUNCIL_OFFICER");
+
+    if (!user || user.roleId.toString() !== dcRoleId) {
       return res.status(403).json({
-        message: "Only DC can assign Officer to District Council",
+        message: "Only DC can assign Officer",
       });
     }
 
     const { councilId } = req.params;
     const { officerId } = req.body;
 
-    if (!officerId) {
-      return res.status(400).json({
-        message: "Officer ID is required",
-      });
-    }
-
     const districtCouncil = await DistrictCouncil.findById(councilId);
     if (!districtCouncil) {
-      return res.status(404).json({
-        message: "District Council not found",
-      });
+      return res.status(404).json({ message: "District Council not found" });
     }
 
     const officer = await User.findById(officerId);
-    if (!officer) {
-      return res.status(404).json({
-        message: "Officer user not found",
-      });
-    }
-
-    if (officer.role !== "DISTRICT_COUNCIL_OFFICER") {
+    if (!officer || officer.roleId.toString() !== officerRoleId) {
       return res.status(400).json({
-        message: "User must have DISTRICT_COUNCIL_OFFICER role",
+        message: "User must have District Council Officer role",
       });
     }
 
@@ -260,21 +247,15 @@ const assignOfficerToCouncil = async (req, res) => {
     await districtCouncil.save();
 
     res.status(200).json({
-      message: "Officer assigned to District Council successfully",
-      districtCouncil: {
-        id: districtCouncil._id,
-        zilaId: districtCouncil.zilaId,
-        officerId: districtCouncil.officerId,
-      },
+      message: "Officer assigned successfully",
+      districtCouncil,
     });
   } catch (error) {
     console.error("Assign Officer Error:", error.message);
-    res.status(500).json({
-      message: "Server Error",
-      error: error.message,
-    });
+    res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
+
 
 /**
  * Add Employee to District Council
@@ -282,39 +263,25 @@ const assignOfficerToCouncil = async (req, res) => {
 const addEmployeeToCouncil = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
-    if (!user || user.role !== "DC") {
+    const dcRoleId = await getRoleId("DC");
+
+    if (!user || user.roleId.toString() !== dcRoleId) {
       return res.status(403).json({
-        message: "Only DC can add Employee to District Council",
+        message: "Only DC can add Employee",
       });
     }
 
     const { councilId } = req.params;
     const { employeeId } = req.body;
 
-    if (!employeeId) {
-      return res.status(400).json({
-        message: "Employee ID is required",
-      });
-    }
-
     const districtCouncil = await DistrictCouncil.findById(councilId);
     if (!districtCouncil) {
-      return res.status(404).json({
-        message: "District Council not found",
-      });
+      return res.status(404).json({ message: "District Council not found" });
     }
 
-    const employee = await User.findById(employeeId);
-    if (!employee) {
-      return res.status(404).json({
-        message: "Employee user not found",
-      });
-    }
-
-    // Check if employee is already in the list
     if (districtCouncil.employeeIds.includes(employeeId)) {
       return res.status(400).json({
-        message: "Employee already added to this District Council",
+        message: "Employee already added",
       });
     }
 
@@ -327,20 +294,15 @@ const addEmployeeToCouncil = async (req, res) => {
     );
 
     res.status(200).json({
-      message: "Employee added to District Council successfully",
-      districtCouncil: {
-        id: updatedCouncil._id,
-        employeeIds: updatedCouncil.employeeIds,
-      },
+      message: "Employee added successfully",
+      districtCouncil,
     });
   } catch (error) {
     console.error("Add Employee Error:", error.message);
-    res.status(500).json({
-      message: "Server Error",
-      error: error.message,
-    });
+    res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
+
 
 /**
  * Remove Employee from District Council
@@ -348,9 +310,11 @@ const addEmployeeToCouncil = async (req, res) => {
 const removeEmployeeFromCouncil = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
-    if (!user || user.role !== "DC") {
+    const dcRoleId = await getRoleId("DC");
+
+    if (!user || user.roleId.toString() !== dcRoleId) {
       return res.status(403).json({
-        message: "Only DC can remove Employee from District Council",
+        message: "Only DC can remove Employee",
       });
     }
 
@@ -358,21 +322,13 @@ const removeEmployeeFromCouncil = async (req, res) => {
 
     const districtCouncil = await DistrictCouncil.findById(councilId);
     if (!districtCouncil) {
-      return res.status(404).json({
-        message: "District Council not found",
-      });
-    }
-
-    // Check if employee exists in the list
-    if (!districtCouncil.employeeIds.includes(employeeId)) {
-      return res.status(400).json({
-        message: "Employee not found in this District Council",
-      });
+      return res.status(404).json({ message: "District Council not found" });
     }
 
     districtCouncil.employeeIds = districtCouncil.employeeIds.filter(
-      (id) => id.toString() !== employeeId
+      id => id.toString() !== employeeId
     );
+
     await districtCouncil.save();
 
     const updatedCouncil = await DistrictCouncil.findById(councilId).populate(
@@ -381,20 +337,15 @@ const removeEmployeeFromCouncil = async (req, res) => {
     );
 
     res.status(200).json({
-      message: "Employee removed from District Council successfully",
-      districtCouncil: {
-        id: updatedCouncil._id,
-        employeeIds: updatedCouncil.employeeIds,
-      },
+      message: "Employee removed successfully",
+      districtCouncil,
     });
   } catch (error) {
     console.error("Remove Employee Error:", error.message);
-    res.status(500).json({
-      message: "Server Error",
-      error: error.message,
-    });
+    res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
+
 
 module.exports = {
   createDistrictCouncil,
