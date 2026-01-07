@@ -6,13 +6,12 @@ const {
   getComplaintsForDCO,
   getUserForDco,
   assignTaskToEmployee,
-  completeComplaintByDCO,
+  updateComplaintStatus,
 } = require("../Controllers/districtCouncilOfficer/districtCouncilUser");
 
-// READ
 router.get("/dco/get-complaints", authMiddleware, getComplaintsForDCO);
 router.get("/dco/get-employees", authMiddleware, getUserForDco);
 router.post("/dco/assign-task", authMiddleware, assignTaskToEmployee);
-router.post("/dco/complete-complaint", authMiddleware, completeComplaintByDCO);
+router.post("/dco/update-status", authMiddleware, updateComplaintStatus);
 
 module.exports = router;
