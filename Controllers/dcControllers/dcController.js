@@ -278,33 +278,59 @@ const updateUserStatusForDC = async (req, res) => {
 /**
  * Get all users in DC's zila
  */
+
+
+
 const getAllUsersForDC = async (req, res) => {
   try {
     const dcUser = req.user;
-    if (!(await checkIsDC(dcUser)))
+    if (!(await checkIsDC(dcUser))) {
       return res.status(403).json({ message: "Access denied. DC only." });
+    }
 
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const { search, roleId, isActive } = req.query;
 
-    let query = { zilaId: dcUser.zilaId, _id: { $ne: dcUser._id } };
+    let query = { _id: { $ne: dcUser._id } };
 
-    if (search && search.trim() !== "") {
+    if (search?.trim()) {
       const regex = new RegExp(search.trim(), "i");
       query.$or = [{ name: regex }, { username: regex }];
     }
 
     if (roleId && roleId !== "ALL") query.roleId = roleId;
-    if (isActive !== undefined && isActive !== "")
-      query.isActive = isActive === "true" || isActive === true;
+    if (isActive !== undefined && isActive !== "") query.isActive = isActive === "true";
 
+    // 1️⃣ Fetch all roles once
+    const roleDoc = await Role.findOne();
+    let roleMap = new Map();
+    if (roleDoc) {
+      roleDoc.roles.forEach(r => roleMap.set(r._id.toString(), r.name));
+    }
+
+    // 2️⃣ Fetch users with pagination
     const result = await paginate({
-      query,
       model: User,
+      query,
       page,
       limit,
       sort: { createdAt: -1 },
+      populate: [
+        { path: "tehsilId", select: "_id name" },
+        { path: "zilaId", select: "_id name" },
+        { path: "mcId", select: "_id name" },
+      ],
+    });
+
+    // 3️⃣ Inject role names using Map (O(1) lookup)
+    result.data = result.data.map(u => {
+      const userObj = u.toObject();
+      userObj.role = {
+        id: userObj.roleId,
+        name: roleMap.get(userObj.roleId?.toString()) || null
+      };
+      return userObj;
     });
 
     res.status(200).json({
@@ -316,11 +342,74 @@ const getAllUsersForDC = async (req, res) => {
       },
       ...result,
     });
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+
+
+
+/**
+ * Delete user (DC only)
+ */
+const deleteUserForDC = async (req, res) => {
+  try {
+    const dcUser = req.user;
+
+    // 🔐 Only DC allowed
+    if (!(await checkIsDC(dcUser))) {
+      return res.status(403).json({ message: "Access denied. DC only." });
+    }
+
+    const { userId } = req.params;
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required." });
+    }
+
+    // 🔍 Find user in same district
+    const user = await User.findOne({
+      _id: userId,
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found or does not belong to your district.",
+      });
+    }
+
+    // ❌ DC cannot delete himself
+    if (user._id.toString() === dcUser._id.toString()) {
+      return res.status(400).json({
+        message: "You cannot delete your own account.",
+      });
+    }
+
+    // 🗑️ Delete user
+    await User.findByIdAndDelete(userId);
+
+    res.status(200).json({
+      message: "User deleted successfully",
+      deletedUser: {
+        _id: user._id,
+        name: user.name,
+        username: user.username,
+        roleId: user.roleId,
+      },
+    });
+  } catch (error) {
+    console.error("Delete User Error:", error);
+    res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+
+
 
 /**
  * Update user details (roleId based)
@@ -390,4 +479,5 @@ module.exports = {
   updateUserDetails,
   createMC,
   createUser,
+  deleteUserForDC
 };
