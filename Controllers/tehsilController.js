@@ -3,6 +3,7 @@ const User = require('../models/usersModel');
 const Zila = require('../models/zilaModel');
 const MC = require('../models/MCModel');
 const Role = require('../models/roleModels');
+const { paginate } = require("../utils/pagination");
 
 
 
@@ -69,25 +70,44 @@ const createTehsil = async (req, res) => {
 /**
  * Get all Tehsils
  */
+
+
 const getAllTehsils = async (req, res) => {
   try {
-    const { zilaId, search } = req.query;
+    const { zilaId, search, page = 1, limit = 10 } = req.query;
+
+    // Build query object
     let query = {};
     if (zilaId) query.zilaId = zilaId;
-    if (search && search.trim() !== "") query.name = new RegExp(search.trim(), "i");
+    if (search?.trim()) query.name = new RegExp(search.trim(), "i");
 
-    const tehsils = await Tehsil.find(query)
-      .populate('zilaId', 'name')
-      .populate('acId', 'name username roleId')
-      .populate('mcId', 'name')
-      .sort({ createdAt: -1 });
+    // Use the reusable paginate function
+    const result = await paginate({
+      query,
+      model: Tehsil,
+      page,
+      limit,
+      sort: { createdAt: -1 },
+      populate: [
+        { path: "zilaId", select: "name" },
+        { path: "acId", select: "name username roleId" },
+        { path: "mcId", select: "name" },
+      ],
+    });
 
-    res.status(200).json({ message: "Tehsils fetched successfully", count: tehsils.length, tehsils });
+    res.status(200).json({
+      message: "Tehsils fetched successfully",
+      count: result.pagination.totalItems,
+      tehsils: result.data,
+      pagination: result.pagination,
+    });
   } catch (error) {
     console.error("Get All Tehsils Error:", error.message);
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
+
+
 
 /**
  * Get single Tehsil by ID

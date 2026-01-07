@@ -1,28 +1,31 @@
-const mongoose = require('mongoose')
+const mongoose = require("mongoose");
 
-const complaintSchema = new mongoose.Schema({
-  title: String,
+const complaintSchema = new mongoose.Schema(
+  {
+    title: String,
 
-  description: { type: String, required: true },
+    description: { type: String, required: true },
 
-  categoryId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "ComplaintCategory",
-  },
-
-  images: String,
-
-  location: {
-    type: {
-      type: String,
-      enum: ["Point"],
-      default: "Point",
+    categoryId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ComplaintCategory",
     },
-    coordinates: {
-      type: [Number], // [lng, lat]
-      required: true,
+
+    images: String,
+
+    location: {
+      type: {
+        type: String,
+        enum: ["Point"],
+        default: "Point",
+      },
+      coordinates: {
+        type: [Number], // [lng, lat]
+        required: true,
+      },
     },
-  },
+
+
 
   locationName: String,
 
@@ -66,17 +69,16 @@ const complaintSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: [
-      "SUBMITTED",
-      "ASSIGNED",
-      "FORWARDED_TO_MC",
-      "ASSIGNED_TO_EMPLOYEE",
-      "IN_PROGRESS",
-      "RESOLVED",
-      "COMPLETED",
-      "DELAYED",
-      "REJECTED",
+      "pending",
+      "progress",
+      "resolveByEmployee",
+      "resolved",
+      "completed",
+      "closed",
+      "delayed",
+      "rejected",
     ],
-    default: "SUBMITTED",
+    default: "pending",
   },
 
   deadline: Date,

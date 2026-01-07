@@ -13,8 +13,8 @@ const getRoleId = async (roleName) => {
   return role._id.toString();
 };
 
-// Middleware-style role check (can be used directly in routes or as separate middleware)
-const checkIsDistrictCouncilOfficer = async (req, res, next) => {
+// Middleware: Only MC_COO can access these routes
+const checkIsMcCoo = async (req, res, next) => {
   try {
     if (!req.user || !req.user._id) {
       return res.status(401).json({
@@ -23,7 +23,7 @@ const checkIsDistrictCouncilOfficer = async (req, res, next) => {
       });
     }
 
-    const user = await User.findById(req.user._id).select("roleId");
+    const user = await User.findById(req.user._id).select("roleId tehsilId");
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -31,20 +31,20 @@ const checkIsDistrictCouncilOfficer = async (req, res, next) => {
       });
     }
 
-    const dcoRoleId = await getRoleId("DISTRICT_COUNCIL_OFFICER");
-    if (user.roleId.toString() !== dcoRoleId) {
+    const mcCooRoleId = await getRoleId("MC_COO");
+    if (user.roleId.toString() !== mcCooRoleId) {
       return res.status(403).json({
         success: false,
-        message:
-          "Forbidden: Only District Council Officer can perform this action",
+        message: "Forbidden: Only MC COO can perform this action",
       });
     }
 
-    // Attach user role name for convenience (optional)
-    req.user.roleName = "DISTRICT_COUNCIL_OFFICER";
+    // Attach tehsilId for use in queries
+    req.mcCooTehsilId = user.tehsilId;
+    req.user.roleName = "MC_COO";
     next();
   } catch (error) {
-    console.error("Role check error:", error);
+    console.error("Role check error (MC_COO):", error);
     return res.status(500).json({
       success: false,
       message: "Error verifying role",
@@ -53,16 +53,22 @@ const checkIsDistrictCouncilOfficer = async (req, res, next) => {
   }
 };
 
-// 1️⃣ Get Complaints for DCO (Village area only)
-const getComplaintsForDCO = async (req, res) => {
+// 1. Get Complaints for MC COO (City + same tehsil)
+const getComplaintsForMcCoo = async (req, res) => {
   try {
-    await checkIsDistrictCouncilOfficer(req, res, async () => {
-      const baseQuery = { areaType: "Village" };
+    await checkIsMcCoo(req, res, async () => {
+      const baseQuery = {
+        areaType: "City",
+        tehsilId: req.mcCooTehsilId, // Critical: only complaints in this tehsil
+      };
+
       const filterQuery = { ...baseQuery };
 
       if (req.query.status) filterQuery.status = req.query.status;
-      if (req.query.categoryId) filterQuery.categoryId = req.query.categoryId;
-
+      if (req.query.category) {
+        const categoryRegex = new RegExp(req.query.category.trim(), "i");
+        filterQuery.category = categoryRegex;
+      }
       if (req.query.search) {
         const searchRegex = new RegExp(req.query.search.trim(), "i");
         filterQuery.$or = [
@@ -75,11 +81,9 @@ const getComplaintsForDCO = async (req, res) => {
       const limit = parseInt(req.query.limit) || 10;
 
       const populateOptions = [
-        { path: "categoryId", select: "name" },
         { path: "createdByVolunteerId", select: "name phone" },
         { path: "zilaId", select: "name" },
         { path: "tehsilId", select: "name" },
-        { path: "districtCouncilId", select: "name" },
         { path: "assignedToUserId", select: "name phone" },
       ];
 
@@ -97,13 +101,14 @@ const getComplaintsForDCO = async (req, res) => {
         message: "Complaints fetched successfully",
         requestedBy: {
           userId: req.user._id,
-          role: "DISTRICT_COUNCIL_OFFICER",
+          role: "MC_COO",
+          tehsilId: req.mcCooTehsilId,
         },
         ...result,
       });
     });
   } catch (error) {
-    console.error("Error in getComplaintsForDCO:", error);
+    console.error("Error in getComplaintsForMcCoo:", error);
     return res.status(500).json({
       success: false,
       message: "Server error",
@@ -112,12 +117,11 @@ const getComplaintsForDCO = async (req, res) => {
   }
 };
 
-// 2️⃣ Get all District Council Employees (for assigning tasks)
-const getUserForDco = async (req, res) => {
+// 2. Get MC Employees (for assigning tasks)
+const getMcEmployees = async (req, res) => {
   try {
-    await checkIsDistrictCouncilOfficer(req, res, async () => {
-      const employeeRoleId = await getRoleId("DISTRICT_COUNCIL_EMPLOYEE");
-      console.log(employeeRoleId);
+    await checkIsMcCoo(req, res, async () => {
+      const employeeRoleId = await getRoleId("MC_EMPLOYEE");
 
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 10;
@@ -125,13 +129,14 @@ const getUserForDco = async (req, res) => {
       const result = await paginate({
         query: {
           roleId: employeeRoleId,
+          tehsilId: req.mcCooTehsilId, // Only employees in the same tehsil
           isActive: true,
         },
         model: User,
         page,
         limit,
         sort: { createdAt: -1 },
-        select: "name username phone zilaId mcId",
+        select: "name username phone zilaId tehsilId mcId",
         populate: [
           { path: "zilaId", select: "name" },
           { path: "tehsilId", select: "name" },
@@ -141,16 +146,16 @@ const getUserForDco = async (req, res) => {
 
       return res.status(200).json({
         success: true,
-        message: "District Council Employees fetched successfully",
+        message: "MC Employees fetched successfully",
         requestedBy: {
           userId: req.user._id,
-          role: "DISTRICT_COUNCIL_OFFICER",
+          role: "MC_COO",
         },
         ...result,
       });
     });
   } catch (error) {
-    console.error("Error in getUserForDco:", error);
+    console.error("Error in getMcEmployees:", error);
     return res.status(500).json({
       success: false,
       message: "Server error",
@@ -159,10 +164,10 @@ const getUserForDco = async (req, res) => {
   }
 };
 
-// 3️⃣ Assign Task to Employee
-const assignTaskToEmployee = async (req, res) => {
+// 3. Assign Task to MC Employee
+const assignTaskToMcEmployee = async (req, res) => {
   try {
-    await checkIsDistrictCouncilOfficer(req, res, async () => {
+    await checkIsMcCoo(req, res, async () => {
       const { complaintId, employeeUserId } = req.body;
 
       if (!complaintId || !employeeUserId) {
@@ -172,55 +177,53 @@ const assignTaskToEmployee = async (req, res) => {
         });
       }
 
-      // Check complaint is in Village area
       const complaintDoc = await complaint.findOne({
         _id: complaintId,
-        areaType: "Village",
+        areaType: "City",
+        tehsilId: req.mcCooTehsilId,
       });
+
       if (!complaintDoc) {
         return res.status(404).json({
           success: false,
-          message:
-            "Complaint not found or not under District Council jurisdiction",
+          message: "Complaint not found or not under this MC jurisdiction",
         });
       }
 
-      // Validate employee
-      const employeeRoleId = await getRoleId("DISTRICT_COUNCIL_EMPLOYEE");
+      const employeeRoleId = await getRoleId("MC_EMPLOYEE");
       const employee = await User.findOne({
         _id: employeeUserId,
         roleId: employeeRoleId,
+        tehsilId: req.mcCooTehsilId,
         isActive: true,
       });
 
       if (!employee) {
         return res.status(400).json({
           success: false,
-          message: "Invalid or inactive District Council Employee",
+          message: "Invalid or inactive MC Employee",
         });
       }
 
-      // Assign
       complaintDoc.assignedToUserId = employeeUserId;
       complaintDoc.status = "progress";
       complaintDoc.assignedAt = new Date();
 
       await complaintDoc.save();
-
       await complaintDoc.populate("assignedToUserId", "name phone");
 
       return res.status(200).json({
         success: true,
-        message: "Task assigned successfully to employee",
+        message: "Task assigned successfully to MC employee",
         requestedBy: {
           userId: req.user._id,
-          role: "DISTRICT_COUNCIL_OFFICER",
+          role: "MC_COO",
         },
         complaint: complaintDoc,
       });
     });
   } catch (error) {
-    console.error("Error in assignTaskToEmployee:", error);
+    console.error("Error in assignTaskToMcEmployee:", error);
     return res.status(500).json({
       success: false,
       message: "Server error",
@@ -229,14 +232,12 @@ const assignTaskToEmployee = async (req, res) => {
   }
 };
 
-// // 4️⃣ DCO can mark complaint as Completed
-// 4️⃣ DCO can update complaint status to ANY valid status
-const updateComplaintStatus = async (req, res) => {
+// 4. Update Complaint Status (Dynamic - any valid status)
+const updateComplaintStatusByMcCoo = async (req, res) => {
   try {
-    await checkIsDistrictCouncilOfficer(req, res, async () => {
+    await checkIsMcCoo(req, res, async () => {
       const { complaintId, status, note } = req.body;
 
-      // Validation
       if (!complaintId || !status) {
         return res.status(400).json({
           success: false,
@@ -262,33 +263,29 @@ const updateComplaintStatus = async (req, res) => {
         });
       }
 
-      // Find complaint under DCO jurisdiction
       const complaintDoc = await complaint.findOne({
         _id: complaintId,
-        areaType: "Village",
+        areaType: "City",
+        tehsilId: req.mcCooTehsilId,
       });
 
       if (!complaintDoc) {
         return res.status(404).json({
           success: false,
-          message:
-            "Complaint not found or not under District Council jurisdiction",
+          message: "Complaint not found or not under this MC",
         });
       }
 
-      // Prevent unnecessary update
       if (complaintDoc.status === status.toLowerCase()) {
         return res.status(400).json({
           success: false,
-          message: `Complaint is already in "${status}" status`,
+          message: `Complaint is already "${status}"`,
         });
       }
 
-      // Update status
       complaintDoc.status = status.toLowerCase();
-      complaintDoc.updatedBy = req.user._id; // track who changed it
+      complaintDoc.updatedBy = req.user._id;
 
-      // Special fields for certain statuses
       if (
         ["completed", "resolved", "closed", "resolveByEmployee"].includes(
           status.toLowerCase()
@@ -298,31 +295,25 @@ const updateComplaintStatus = async (req, res) => {
         complaintDoc.completedBy = req.user._id;
       }
 
-      // Optional note (e.g., reason for rejection or delay)
       if (note && note.trim()) {
         complaintDoc.resolutionNote = note.trim();
       }
 
       await complaintDoc.save();
-
-      // Populate useful fields for response
-      await complaintDoc.populate([
-        { path: "assignedToUserId", select: "name phone" },
-        { path: "createdByVolunteerId", select: "name phone" },
-      ]);
+      await complaintDoc.populate("assignedToUserId", "name phone");
 
       return res.status(200).json({
         success: true,
-        message: `Complaint status updated to "${status}" successfully`,
+        message: `Status updated to "${status}"`,
         requestedBy: {
           userId: req.user._id,
-          role: "DISTRICT_COUNCIL_OFFICER",
+          role: "MC_COO",
         },
         complaint: complaintDoc,
       });
     });
   } catch (error) {
-    console.error("Error in updateComplaintStatus:", error);
+    console.error("Error in updateComplaintStatusByMcCoo:", error);
     return res.status(500).json({
       success: false,
       message: "Server error",
@@ -332,8 +323,9 @@ const updateComplaintStatus = async (req, res) => {
 };
 
 module.exports = {
-  getComplaintsForDCO,
-  getUserForDco,
-  assignTaskToEmployee,
-  updateComplaintStatus,
+  getComplaintsForMcCoo,
+  getMcEmployees,
+  assignTaskToMcEmployee,
+  updateComplaintStatusByMcCoo,
+  checkIsMcCoo,
 };
