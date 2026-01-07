@@ -4,9 +4,14 @@ const authMiddleware = require("../middlewares/authMiddleware");
 
 const {
   getComplaintsForDCO,
+  getUserForDco,
+  assignTaskToEmployee,
+  updateComplaintStatus,
 } = require("../Controllers/districtCouncilOfficer/districtCouncilUser");
 
-// READ
 router.get("/dco/get-complaints", authMiddleware, getComplaintsForDCO);
+router.get("/dco/get-employees", authMiddleware, getUserForDco);
+router.post("/dco/assign-task", authMiddleware, assignTaskToEmployee);
+router.post("/dco/update-status", authMiddleware, updateComplaintStatus);
 
 module.exports = router;

@@ -189,25 +189,22 @@ const updateStatusForDC = async (req, res) => {
     const { status } = req.body;
 
     const allowedStatuses = [
-      "SUBMITTED",
-      "ASSIGNED",
-      "FORWARDED_TO_MC",
-      "ASSIGNED_TO_EMPLOYEE",
-      "IN_PROGRESS",
-      "RESOLVED",
-      "COMPLETED",
-      "DELAYED",
-      "REJECTED",
+      "pending",
+      "progress",
+      "resolved",
+      "completed",
+      "closed",
+      "delayed",
+      "rejected",
+      "resolveByEmployee",
     ];
 
     if (!status || !allowedStatuses.includes(status))
-      return res
-        .status(400)
-        .json({
-          message: `Invalid status. Must be one of: ${allowedStatuses.join(
-            ", "
-          )}`,
-        });
+      return res.status(400).json({
+        message: `Invalid status. Must be one of: ${allowedStatuses.join(
+          ", "
+        )}`,
+      });
 
     const complaint = await Complaint.findOne({
       _id: complaintId,
@@ -249,11 +246,9 @@ const updateUserStatusForDC = async (req, res) => {
 
     const user = await User.findOne({ _id: userId, zilaId: dcUser.zilaId });
     if (!user)
-      return res
-        .status(404)
-        .json({
-          message: "User not found or does not belong to your district.",
-        });
+      return res.status(404).json({
+        message: "User not found or does not belong to your district.",
+      });
 
     if (user._id.toString() === dcUser._id.toString())
       return res

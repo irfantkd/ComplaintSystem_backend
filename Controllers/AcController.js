@@ -102,7 +102,6 @@ const getComplaintsForAC = async (req, res) => {
     });
   }
 };
-
 /**
  * Approve complaint resolution
  */
@@ -227,7 +226,6 @@ const rejectResolution = async (req, res) => {
     });
   }
 };
-
 /**
  * Get statistics for AC dashboard
  */
