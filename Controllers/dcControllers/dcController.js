@@ -26,57 +26,113 @@ const checkIsDC = async (user) => {
   return user.roleId.toString() === dcRoleId;
 };
 
+
+
 const createUser = async (req, res) => {
   try {
-    const { name, username, password, roleId, districtId, tehsilId, mcId } =
-      req.body;
+    const {
+      name,
+      username,
+      password,
+      phone,
+      roleId,
+      zilaId,
+      tehsilId,
+      mcId
+    } = req.body;
 
-    // 1️⃣ Basic validation
-    if (!name || !username || !password || !roleId) {
+    // 1️⃣ Required fields
+    if (!name || !username || !password || !phone || !roleId || !zilaId) {
       return res.status(400).json({
-        message: "Missing required fields",
+        message: "Missing required fields"
       });
     }
 
+    // 2️⃣ Check username uniqueness
     const existingUser = await User.findOne({ username });
     if (existingUser) {
       return res.status(400).json({
-        message: "Username already exists",
+        message: "Username already exists"
       });
     }
 
+    // 3️⃣ Validate Zila exists (no ObjectId check)
+    const zila = await Zila.findOne({ _id: zilaId });
+    if (!zila) {
+      return res.status(400).json({
+        message: "Invalid Zila"
+      });
+    }
+
+    // 4️⃣ Optional relations validation
+    if (tehsilId) {
+      const tehsil = await Tehsil.findOne({ _id: tehsilId });
+      if (!tehsil) {
+        return res.status(400).json({
+          message: "Invalid Tehsil"
+        });
+      }
+    }
+
+    if (mcId) {
+      const mc = await MC.findOne({ _id: mcId });
+      if (!mc) {
+        return res.status(400).json({
+          message: "Invalid MC"
+        });
+      }
+    }
+
+    // 5️⃣ Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const newUser = await User.create({
+    // 6️⃣ Create user
+    const user = await User.create({
       name,
       username,
       password: hashedPassword,
+      phone,
       roleId,
-      districtId: districtId || undefined,
+      zilaId,
       tehsilId: tehsilId || undefined,
-      mcId: mcId || undefined,
+      mcId: mcId || undefined
     });
 
-    res.status(201).json({
+    // 7️⃣ Populate relations
+    const populatedUser = await User.findById(user._id)
+      .populate("zilaId", "name")
+      .populate("tehsilId", "name")
+      .populate("mcId", "name");
+
+    // 8️⃣ Response
+    return res.status(201).json({
       message: "User created successfully",
       user: {
-        id: newUser._id,
-        name: newUser.name,
-        username: newUser.username,
-        hashedPassword,
-        role: newUser.roleId,
-        districtId: newUser.districtId,
-        tehsilId: newUser.tehsilId,
-        mcId: newUser.mcId,
-      },
+        id: populatedUser._id,
+        name: populatedUser.name,
+        username: populatedUser.username,
+        phone: populatedUser.phone,
+        roleId: populatedUser.roleId,
+        zila: populatedUser.zilaId,
+        tehsil: populatedUser.tehsilId,
+        mc: populatedUser.mcId,
+        isActive: populatedUser.isActive,
+        createdAt: populatedUser.createdAt
+      }
     });
+
   } catch (error) {
-    console.error("Create User Error:", error.message);
-    res.status(500).json({
-      message: error.message || "Server error",
+    console.error("Create User Error:", error);
+    return res.status(500).json({
+      message: "Server error",
+      error: error.message
     });
   }
 };
+
+
+
+
 
 /**
  * Get complaints for DC
