@@ -1,6 +1,7 @@
 const MCModel = require("../../models/MCModel");
 const userModel = require("../../models/usersModel");
 const Role = require("../../models/roleModels");
+const mongoose = require('mongoose')
 
 const getRoleId = async (roleName) => {
   const roleConfig = await Role.findOne();
@@ -39,7 +40,7 @@ const createMC = async (req, res) => {
 
 const deleteMc = async (req, res) => {
   try {
-    const roleId = getRoleId("DC");
+    const roleId =await getRoleId("DC");
     const user = await userModel.findById(req.user.id);
 
     if (user.roleId.toString() !== roleId) {
@@ -59,7 +60,7 @@ const deleteMc = async (req, res) => {
         message: "MC not found",
       });
     }
-    if (mc.zilaId.toString() !== dcUser.zilaId.toString()) {
+    if (mc.zilaId.toString() !== user.zilaId.toString()) {
       return res.status(403).json({ message: "Access denied. DC only." });
     }
     const deletedMc = await MCModel.findByIdAndDelete(mcId);
@@ -82,15 +83,19 @@ const deleteMc = async (req, res) => {
 
 const getAllMcForDc = async (req, res) => {
   try {
-    const roleId = getRoleId("DC");
+    const roleId = await getRoleId("DC"); // ✅ Added await
     const user = await userModel.findById(req.user.id);
+    console.log("roleId:", roleId);
+    console.log("user.roleId:", user.roleId.toString());
 
     if (user.roleId.toString() !== roleId) {
       return res.status(403).json({
         message: "Access denied",
       });
     }
-    const mcs = await MCModel.find({ zilaId: dcUser.zilaId });
+    const mcs = await MCModel.find({ zilaId: user.zilaId })
+    .populate("tehsilId", "name")
+      .populate("zilaId", "name"); 
     return res
       .status(200)
       .json({ message: "Data fetched successfully", data: mcs });
@@ -101,6 +106,8 @@ const getAllMcForDc = async (req, res) => {
     });
   }
 };
+
+
 const getMcByIdForDc = async (req, res) => {
   try {
     const roleId = getRoleId("DC");
@@ -139,7 +146,7 @@ const updateMcForDc = async (req, res) => {
   try {
     const { mcId } = req.params;
     const updates = req.body;
-    const roleId = getRoleId("DC");
+    const roleId =await getRoleId("DC");
     const user = await userModel.findById(req.user.id);
 
     if (user.roleId.toString() !== roleId) {

@@ -11,6 +11,9 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     required: true,
   },
+  phone:{
+    type:String
+  },
 
   zilaId: {
     type: mongoose.Schema.Types.ObjectId,
