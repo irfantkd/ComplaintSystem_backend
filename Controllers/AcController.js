@@ -144,21 +144,28 @@ const approveResolution = async (req, res) => {
 /**
  * Reject complaint resolution
  */
+/**
+ * Reject complaint resolution
+ */
 const rejectResolution = async (req, res) => {
   try {
     const acUser = req.user;
     const acRoleId = await getRoleId("AC");
     const { complaintId } = req.params;
-    const { remark, reassignToMC } = req.body;
+    const { remark } = req.body;
 
     if (acUser.roleId.toString() !== acRoleId) {
       return res.status(403).json({ message: "Access denied. AC only." });
     }
 
-    if (!remark) return res.status(400).json({ message: "Remark is required for rejection" });
+    if (!remark) {
+      return res.status(400).json({ message: "Remark is required for rejection" });
+    }
 
     const complaint = await Complaint.findById(complaintId);
-    if (!complaint) return res.status(404).json({ message: "Complaint not found" });
+    if (!complaint) {
+      return res.status(404).json({ message: "Complaint not found" });
+    }
 
     if (complaint.tehsilId.toString() !== acUser.tehsilId.toString()) {
       return res.status(403).json({ message: "Cannot reject complaint from different Tehsil" });
@@ -168,18 +175,22 @@ const rejectResolution = async (req, res) => {
       return res.status(400).json({ message: "Only RESOLVED complaints can be rejected" });
     }
 
-    complaint.status = reassignToMC ? "ASSIGNED_TO_EMPLOYEE" : "REJECTED";
+    // Update status to rejected and add AC's remark
+    complaint.status = "rejected";
+    complaint.rejectionRemark = remark;
+    complaint.rejectedBy = acUser._id;
+    complaint.rejectedAt = new Date();
     complaint.updatedAt = new Date();
     await complaint.save();
 
     res.status(200).json({
-      message: "Complaint resolution rejected",
+      message: "Complaint resolution rejected successfully",
       complaint: {
         id: complaint._id,
         status: complaint.status,
         title: complaint.title,
+        rejectionRemark: remark,
       },
-      remark,
     });
   } catch (error) {
     console.error("Error rejecting resolution:", error);
