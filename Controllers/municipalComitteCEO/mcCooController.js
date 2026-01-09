@@ -233,33 +233,15 @@ const assignTaskToMcEmployee = async (req, res) => {
 };
 
 // 4. Update Complaint Status (Dynamic - any valid status)
-const updateComplaintStatusByMcCoo = async (req, res) => {
+const approveComplaintByMcCoo = async (req, res) => {
   try {
     await checkIsMcCoo(req, res, async () => {
-      const { complaintId, status, note } = req.body;
+      const { complaintId, note } = req.body;
 
-      if (!complaintId || !status) {
+      if (!complaintId) {
         return res.status(400).json({
           success: false,
-          message: "complaintId and status are required",
-        });
-      }
-
-      const validStatuses = [
-        "pending",
-        "progress",
-        "resolved",
-        "completed",
-        "closed",
-        "delayed",
-        "rejected",
-        "resolveByEmployee",
-      ];
-
-      if (!validStatuses.includes(status.toLowerCase())) {
-        return res.status(400).json({
-          success: false,
-          message: `Invalid status. Allowed: ${validStatuses.join(", ")}`,
+          message: "complaintId is required",
         });
       }
 
@@ -267,33 +249,21 @@ const updateComplaintStatusByMcCoo = async (req, res) => {
         _id: complaintId,
         areaType: "City",
         tehsilId: req.mcCooTehsilId,
+        status: "resolveByEmployee", 
       });
 
       if (!complaintDoc) {
         return res.status(404).json({
           success: false,
-          message: "Complaint not found or not under this MC",
+          message:
+            "Complaint not found, not under this MC, or not eligible for approval",
         });
       }
 
-      if (complaintDoc.status === status.toLowerCase()) {
-        return res.status(400).json({
-          success: false,
-          message: `Complaint is already "${status}"`,
-        });
-      }
-
-      complaintDoc.status = status.toLowerCase();
+      complaintDoc.status = "resolved";
       complaintDoc.updatedBy = req.user._id;
-
-      if (
-        ["completed", "resolved", "closed", "resolveByEmployee"].includes(
-          status.toLowerCase()
-        )
-      ) {
-        complaintDoc.completedAt = new Date();
-        complaintDoc.completedBy = req.user._id;
-      }
+      complaintDoc.completedAt = new Date();
+      complaintDoc.completedBy = req.user._id;
 
       if (note && note.trim()) {
         complaintDoc.resolutionNote = note.trim();
@@ -304,7 +274,7 @@ const updateComplaintStatusByMcCoo = async (req, res) => {
 
       return res.status(200).json({
         success: true,
-        message: `Status updated to "${status}"`,
+        message: "Complaint approved and marked as resolved",
         requestedBy: {
           userId: req.user._id,
           role: "MC_COO",
@@ -313,7 +283,7 @@ const updateComplaintStatusByMcCoo = async (req, res) => {
       });
     });
   } catch (error) {
-    console.error("Error in updateComplaintStatusByMcCoo:", error);
+    console.error("Error in approveComplaintByMcCoo:", error);
     return res.status(500).json({
       success: false,
       message: "Server error",
@@ -322,10 +292,70 @@ const updateComplaintStatusByMcCoo = async (req, res) => {
   }
 };
 
+
+const rejectComplaintByMcCoo = async (req, res) => {
+  try {
+    await checkIsMcCoo(req, res, async () => {
+      const { complaintId, note } = req.body;
+
+      if (!complaintId) {
+        return res.status(400).json({
+          success: false,
+          message: "complaintId is required",
+        });
+      }
+
+      const complaintDoc = await complaint.findOne({
+        _id: complaintId,
+        areaType: "City",
+        tehsilId: req.mcCooTehsilId,
+        status: "resolveByEmployee", // 🔐 strict check
+      });
+
+      if (!complaintDoc) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Complaint not found, not under this MC, or not eligible for rejection",
+        });
+      }
+
+      complaintDoc.status = "rejected";
+      complaintDoc.updatedBy = req.user._id;
+
+      if (note && note.trim()) {
+        complaintDoc.resolutionNote = note.trim();
+      }
+
+      await complaintDoc.save();
+      await complaintDoc.populate("assignedToUserId", "name phone");
+
+      return res.status(200).json({
+        success: true,
+        message: "Complaint rejected by MC COO",
+        requestedBy: {
+          userId: req.user._id,
+          role: "MC_COO",
+        },
+        complaint: complaintDoc,
+      });
+    });
+  } catch (error) {
+    console.error("Error in rejectComplaintByMcCoo:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+
 module.exports = {
   getComplaintsForMcCoo,
   getMcEmployees,
   assignTaskToMcEmployee,
-  updateComplaintStatusByMcCoo,
+  approveComplaintByMcCoo,
+  rejectComplaintByMcCoo,
   checkIsMcCoo,
 };

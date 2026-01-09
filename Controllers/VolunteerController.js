@@ -138,4 +138,35 @@ const createComplaint = async (req, res) => {
   }
 };
 
-module.exports = { createComplaint };
+
+
+
+const getComplainsOfVolunteer = async (req, res) => {
+  try {
+    const user = req.user;
+    console.log(user)
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized user" });
+    }
+
+    const complaints = await Complaint.find({
+      createdByVolunteerId: user.id
+    })
+    .sort({ createdAt: -1 }); 
+
+    return res.status(200).json({
+      success: true,
+      count: complaints.length,
+      data: complaints
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+
+module.exports = { createComplaint ,  getComplainsOfVolunteer};
