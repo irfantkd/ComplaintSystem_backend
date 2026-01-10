@@ -28,7 +28,7 @@ const getRoleName = async (roleId) => {
 
 /**
  * Sign-in for Admin Dashboard roles:
- * DC, DISTRICT_COUNCIL_OFFICER, AC, MC_COO
+ * DC, DISTRICT_COUNCIL_OFFICER, AC, MC_CO
  */
 const adminSignIn = async (req, res) => {
   try {
@@ -47,7 +47,7 @@ const adminSignIn = async (req, res) => {
       return res.status(403).json({ message: "Role not found or inactive" });
 
     // Only allow admin roles
-    const adminRoles = ["DC", "DISTRICT_COUNCIL_OFFICER", "AC", "MC_COO"];
+    const adminRoles = ["DC", "DISTRICT_COUNCIL_OFFICER", "AC", "MC_CO"];
     if (!adminRoles.includes(roleName)) {
       return res
         .status(403)
@@ -83,6 +83,7 @@ const adminSignIn = async (req, res) => {
 /**
  * Sign-in for Field roles:
  * MC_EMPLOYEE, USER
+ * MC_EMPLOYEE, USER
  */
 const fieldSignIn = async (req, res) => {
   try {
@@ -100,12 +101,8 @@ const fieldSignIn = async (req, res) => {
     if (!roleName)
       return res.status(403).json({ message: "Role not found or inactive" });
 
-    const fieldRoles = [
-      "MC_EMPLOYEE",
-      "USER",
-      "DISTRICT_COUNCIL_EMPLOYEE",
-    ];
-    
+    const fieldRoles = ["MC_EMPLOYEE", "USER", "DISTRICT_COUNCIL_EMPLOYEE"];
+
     if (!fieldRoles.includes(roleName)) {
       return res
         .status(403)

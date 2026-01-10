@@ -8,7 +8,7 @@ const MONGO_URI =
   "mongodb+srv://irfantkd:pc120irfan@notetakeing.yze0q5w.mongodb.net/COMPLAINTSYSTEM";
 
 if (!MONGO_URI) {
-  console.error("Error: MONGO_URI is not defined in .env file");
+  console.error("Error: MONGO_URL is not defined in .env file");
   process.exit(1);
 }
 
@@ -19,10 +19,11 @@ const seedRoles = async () => {
 
     // Roles to insert
     const rolesToSeed = [
+      "DC",
       "DISTRICT_COUNCIL_OFFICER",
       "DISTRICT_COUNCIL_EMPLOYEE",
       "AC",
-      "MC_COO",
+      "MC_CO",
       "MC_EMPLOYEE",
       "USER",
     ];

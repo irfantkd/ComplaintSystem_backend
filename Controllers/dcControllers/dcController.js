@@ -121,83 +121,70 @@ const createUser = async (req, res) => {
 /**
  * Get complaints for DC
  */
-const getComplaintsForDC = async (req, res) => {
-  try {
-    const dcUser = req.user;
-    if (!(await checkIsDC(dcUser))) {
-      return res.status(403).json({ message: "Access denied. DC only." });
-    }
+// const getComplaintsForDC = async (req, res) => {
+//   try {
+//     const dcUser = req.user;
+//     if (!(await checkIsDC(dcUser))) {
+//       return res.status(403).json({ message: "Access denied. DC only." });
+//     }
 
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const { search, status, categoryId, startDate, endDate, areaType } = req.query;
+//     const page = parseInt(req.query.page) || 1;
+//     const limit = parseInt(req.query.limit) || 10;
+//     const { search, status, categoryId, startDate, endDate } = req.query;
 
-    // EMPTY QUERY - NO FILTERING BY LOCATION (gets ALL complaints)
-    let query = {};
+//     let query = { zilaId: dcUser.zilaId };
 
-    // Apply only the filters from query params
-    if (search && search.trim() !== "") {
-      const searchRegex = new RegExp(search.trim(), "i");
-      query.$or = [
-        { title: searchRegex },
-        { description: searchRegex },
-        { locationName: searchRegex }
-      ];
-    }
+//     if (search && search.trim() !== "") {
+//       const searchRegex = new RegExp(search.trim(), "i");
+//       query.$or = [{ title: searchRegex }, { description: searchRegex }];
+//     }
 
-    if (status && status !== "ALL") query.status = status;
-    if (categoryId && categoryId !== "") query.categoryId = categoryId;
-    if (areaType && areaType !== "ALL") query.areaType = areaType;
+//     if (status && status !== "ALL") query.status = status;
+//     if (categoryId && categoryId !== "") query.categoryId = categoryId;
 
-    if (startDate || endDate) {
-      query.createdAt = {};
-      if (startDate) query.createdAt.$gte = new Date(startDate);
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        query.createdAt.$lte = end;
-      }
-    }
+//     if (startDate || endDate) {
+//       query.createdAt = {};
+//       if (startDate) query.createdAt.$gte = new Date(startDate);
+//       if (endDate) {
+//         const end = new Date(endDate);
+//         end.setHours(23, 59, 59, 999);
+//         query.createdAt.$lte = end;
+//       }
+//     }
 
-    console.log("DC Query (All Complaints):", JSON.stringify(query, null, 2));
+//     // Mark unseen complaints as seen
+//     await Complaint.updateMany(
+//       { ...query, seen: false },
+//       { $set: { seen: true, updatedAt: new Date() } }
+//     );
 
-    await Complaint.updateMany(
-      { ...query, seen: false },
-      { $set: { seen: true, updatedAt: new Date() } }
-    );
+//     const result = await paginate({
+//       query,
+//       model: Complaint,
+//       page,
+//       limit,
+//       sort: { createdAt: -1 },
+//       populate: [
+//         { path: "createdByVolunteerId", select: "name username" },
+//         { path: "categoryId", select: "name" },
+//       ],
+//     });
 
-    const result = await paginate({
-      query,
-      model: Complaint,
-      page,
-      limit,
-      sort: { createdAt: -1 },
-      populate: [
-        { path: "createdByVolunteerId", select: "name username email phone" },
-        { path: "categoryId", select: "name" },
-        { path: "zilaId", select: "name" },
-        { path: "tehsilId", select: "name" },
-        { path: "districtCouncilId", select: "name" },
-        { path: "assignedToUserId", select: "name username email" }
-      ],
-    });
-
-    res.status(200).json({
-      message: "All complaints fetched successfully",
-      filtersApplied: {
-        search: search || null,
-        status: status || null,
-        categoryId: categoryId || null,
-        areaType: areaType || null,
-        dateRange: startDate || endDate ? { startDate, endDate } : null,
-      },
-      ...result,
-    });
-  } catch (error) {
-    console.error("Error fetching all complaints for DC:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
+//     res.status(200).json({
+//       message: "Complaints fetched successfully",
+//       filtersApplied: {
+//         search: search || null,
+//         status: status || null,
+//         categoryId: categoryId || null,
+//         dateRange: startDate || endDate ? { startDate, endDate } : null,
+//       },
+//       ...result,
+//     });
+//   } catch (error) {
+//     console.error("Error fetching complaints for DC:", error);
+//     res.status(500).json({ message: "Server error", error: error.message });
+//   }
+// };
 
 /**
  * Delete complaint for DC
@@ -240,78 +227,36 @@ const getComplaintByIdForDC = async (req, res) => {
     }
 
     const { complaintId } = req.params;
-    
-    // Add validation for ObjectId format
-    const mongoose = require('mongoose');
-    if (!mongoose.Types.ObjectId.isValid(complaintId)) {
-      return res.status(400).json({ message: "Invalid complaint ID format" });
-    }
+    const { status } = req.body;
 
-    console.log("Searching for complaint ID:", complaintId);
+    const allowedStatuses = [
+      "pending",
+      "progress",
+      "resolved",
+      "completed",
+      "closed",
+      "delayed",
+      "rejected",
+      "resolveByEmployee",
+    ];
 
-    const complaint = await Complaint.findById(complaintId)
-      .populate("createdByVolunteerId", "name username email phone")
-      .populate("categoryId", "name")
-      .populate("zilaId", "name")
-      .populate("tehsilId", "name")
-      .populate("districtCouncilId", "name")
-      .populate("assignedToUserId", "name username email");
+    if (!status || !allowedStatuses.includes(status))
+      return res.status(400).json({
+        message: `Invalid status. Must be one of: ${allowedStatuses.join(
+          ", "
+        )}`,
+      });
 
-    console.log("Complaint found:", complaint);
-
-    if (!complaint) {
-      return res.status(404).json({ message: "Complaint not found" });
-    }
-
-    // Check if zilaId exists before comparing
-    
-
-    res.status(200).json({
-      message: "Complaint fetched successfully",
-      complaint
+    const complaint = await Complaint.findOne({
+      _id: complaintId,
+      zilaId: dcUser.zilaId,
     });
-  } catch (error) {
-    console.error("Error fetching complaint:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
+    if (!complaint)
+      return res
+        .status(404)
+        .json({ message: "Complaint not found or access denied." });
 
-/**
- * Update complaint status for DC
- */
-/**
- * Approve complaint resolution (DC)
- */
-const approveResolutionForDC = async (req, res) => {
-  try {
-    const dcUser = req.user;
-    const dcRoleId = await getRoleId("DC");
-    const { complaintId } = req.params;
-    const { remark } = req.body;
-
-    if (dcUser.roleId.toString() !== dcRoleId) {
-      return res.status(403).json({ message: "Access denied. DC only." });
-    }
-
-    const complaint = await Complaint.findById(complaintId);
-    if (!complaint) {
-      return res.status(404).json({ message: "Complaint not found" });
-    }
-
-    if (complaint.zilaId.toString() !== dcUser.zilaId.toString()) {
-      return res.status(403).json({ 
-        message: "Cannot approve complaint from different Zila" 
-      });
-    }
-
-    if (complaint.status !== "resolved") {
-      return res.status(400).json({ 
-        message: "Only RESOLVED complaints can be approved" 
-      });
-    }
-
-    complaint.status = "completed";
-    complaint.updatedAt = new Date();
+    complaint.status = status;
     await complaint.save();
 
     res.status(200).json({
@@ -329,65 +274,6 @@ const approveResolutionForDC = async (req, res) => {
   }
 };
 
-/**
- * Reject complaint resolution (DC)
- */
-const rejectResolutionForDC = async (req, res) => {
-  try {
-    const dcUser = req.user;
-    const dcRoleId = await getRoleId("DC");
-    const { complaintId } = req.params;
-    const { remark } = req.body;
-
-    if (dcUser.roleId.toString() !== dcRoleId) {
-      return res.status(403).json({ message: "Access denied. DC only." });
-    }
-
-    if (!remark) {
-      return res.status(400).json({ 
-        message: "Remark is required for rejection" 
-      });
-    }
-
-    const complaint = await Complaint.findById(complaintId);
-    if (!complaint) {
-      return res.status(404).json({ message: "Complaint not found" });
-    }
-
-    if (complaint.zilaId.toString() !== dcUser.zilaId.toString()) {
-      return res.status(403).json({ 
-        message: "Cannot reject complaint from different Zila" 
-      });
-    }
-
-    if (complaint.status !== "resolved") {
-      return res.status(400).json({ 
-        message: "Only RESOLVED complaints can be rejected" 
-      });
-    }
-
-    // Update status to rejected and add DC's remark
-    complaint.status = "rejected";
-    complaint.rejectionRemark = remark;
-    complaint.rejectedBy = dcUser._id;
-    complaint.rejectedAt = new Date();
-    complaint.updatedAt = new Date();
-    await complaint.save();
-
-    res.status(200).json({
-      message: "Complaint resolution rejected successfully",
-      complaint: {
-        id: complaint._id,
-        status: complaint.status,
-        title: complaint.title,
-        rejectionRemark: remark,
-      },
-    });
-  } catch (error) {
-    console.error("Error rejecting resolution:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
 /**
  * Update user active status for DC
  */
@@ -624,7 +510,6 @@ const createMC = async (req, res) => {
 };
 
 module.exports = {
-  getComplaintsForDC,
   deleteComplaintForDC,
   approveResolutionForDC,
   rejectResolutionForDC,
@@ -634,5 +519,4 @@ module.exports = {
   createMC,
   createUser,
   deleteUserForDC,
-  getComplaintByIdForDC
 };

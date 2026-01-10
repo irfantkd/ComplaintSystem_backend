@@ -5,7 +5,7 @@ const {
   getComplaintDetails,
   submitResolutionWithImage,
   getEmployeeStats,
-} = require("../Controllers/employeeController");
+} = require("../Controllers/employeeController/employeeController");
 
 const upload = require("../middlewares/uploadMiddleware");
 const authMiddleware = require("../middlewares/authMiddleware");

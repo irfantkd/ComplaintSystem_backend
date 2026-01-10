@@ -17,6 +17,7 @@ const getRoleId = async (roleName) => {
 const createComplaint = async (req, res) => {
   try {
     const USERId = req.user.id;
+    const USERId = req.user.id;
 
     const {
       title,
@@ -31,6 +32,8 @@ const createComplaint = async (req, res) => {
       districtCouncilId,
     } = req.body;
 
+    // 🔐 USER validation using roleId
+    const user = await User.findById(USERId);
 
     
 
@@ -39,7 +42,10 @@ const createComplaint = async (req, res) => {
 
     const USERRoleId = await getRoleId("USER");
     if (user.roleId.toString() !== USERRoleId) {
+    const USERRoleId = await getRoleId("USER");
+    if (user.roleId.toString() !== USERRoleId) {
       return res.status(403).json({
+        message: "Only USERs can create complaints",
         message: "Only USERs can create complaints",
       });
     }
@@ -93,6 +99,7 @@ const createComplaint = async (req, res) => {
       locationName,
       areaType,
       createdByVolunteerId: USERId,
+      createdByVolunteerId: USERId,
       zilaId,
       tehsilId,
       districtCouncilId,
@@ -102,7 +109,7 @@ const createComplaint = async (req, res) => {
     // 🔔 Get roleIds for notifications
     const dcRoleId = await getRoleId("DC");
     const acRoleId = await getRoleId("AC");
-    const mcCooRoleId = await getRoleId("MC_COO");
+    const mcCooRoleId = await getRoleId("MC_CO");
 
     // 🔔 Fetch officers using roleIds
     const dcUsers = await User.find({ roleId: dcRoleId, zilaId });
@@ -142,6 +149,7 @@ const createComplaint = async (req, res) => {
   }
 };
 
+const getComplainsOfUSER = async (req, res) => {
 
 
 
