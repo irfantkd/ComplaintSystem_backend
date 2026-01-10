@@ -26,25 +26,15 @@ const checkIsDC = async (user) => {
   return user.roleId.toString() === dcRoleId;
 };
 
-
-
 const createUser = async (req, res) => {
   try {
-    const {
-      name,
-      username,
-      password,
-      phone,
-      roleId,
-      zilaId,
-      tehsilId,
-      mcId
-    } = req.body;
+    const { name, username, password, phone, roleId, zilaId, tehsilId, mcId } =
+      req.body;
 
     // 1️⃣ Required fields
     if (!name || !username || !password || !phone || !roleId || !zilaId) {
       return res.status(400).json({
-        message: "Missing required fields"
+        message: "Missing required fields",
       });
     }
 
@@ -52,7 +42,7 @@ const createUser = async (req, res) => {
     const existingUser = await User.findOne({ username });
     if (existingUser) {
       return res.status(400).json({
-        message: "Username already exists"
+        message: "Username already exists",
       });
     }
 
@@ -60,7 +50,7 @@ const createUser = async (req, res) => {
     const zila = await Zila.findOne({ _id: zilaId });
     if (!zila) {
       return res.status(400).json({
-        message: "Invalid Zila"
+        message: "Invalid Zila",
       });
     }
 
@@ -69,7 +59,7 @@ const createUser = async (req, res) => {
       const tehsil = await Tehsil.findOne({ _id: tehsilId });
       if (!tehsil) {
         return res.status(400).json({
-          message: "Invalid Tehsil"
+          message: "Invalid Tehsil",
         });
       }
     }
@@ -78,7 +68,7 @@ const createUser = async (req, res) => {
       const mc = await MC.findOne({ _id: mcId });
       if (!mc) {
         return res.status(400).json({
-          message: "Invalid MC"
+          message: "Invalid MC",
         });
       }
     }
@@ -95,7 +85,7 @@ const createUser = async (req, res) => {
       roleId,
       zilaId,
       tehsilId: tehsilId || undefined,
-      mcId: mcId || undefined
+      mcId: mcId || undefined,
     });
 
     // 7️⃣ Populate relations
@@ -117,23 +107,17 @@ const createUser = async (req, res) => {
         tehsil: populatedUser.tehsilId,
         mc: populatedUser.mcId,
         isActive: populatedUser.isActive,
-        createdAt: populatedUser.createdAt
-      }
+        createdAt: populatedUser.createdAt,
+      },
     });
-
   } catch (error) {
     console.error("Create User Error:", error);
     return res.status(500).json({
       message: "Server error",
-      error: error.message
+      error: error.message,
     });
   }
 };
-
-
-
-
-
 /**
  * Get complaints for DC
  */
@@ -335,8 +319,6 @@ const updateUserStatusForDC = async (req, res) => {
  * Get all users in DC's zila
  */
 
-
-
 const getAllUsersForDC = async (req, res) => {
   try {
     const dcUser = req.user;
@@ -356,13 +338,14 @@ const getAllUsersForDC = async (req, res) => {
     }
 
     if (roleId && roleId !== "ALL") query.roleId = roleId;
-    if (isActive !== undefined && isActive !== "") query.isActive = isActive === "true";
+    if (isActive !== undefined && isActive !== "")
+      query.isActive = isActive === "true";
 
     // 1️⃣ Fetch all roles once
     const roleDoc = await Role.findOne();
     let roleMap = new Map();
     if (roleDoc) {
-      roleDoc.roles.forEach(r => roleMap.set(r._id.toString(), r.name));
+      roleDoc.roles.forEach((r) => roleMap.set(r._id.toString(), r.name));
     }
 
     // 2️⃣ Fetch users with pagination
@@ -380,11 +363,11 @@ const getAllUsersForDC = async (req, res) => {
     });
 
     // 3️⃣ Inject role names using Map (O(1) lookup)
-    result.data = result.data.map(u => {
+    result.data = result.data.map((u) => {
       const userObj = u.toObject();
       userObj.role = {
         id: userObj.roleId,
-        name: roleMap.get(userObj.roleId?.toString()) || null
+        name: roleMap.get(userObj.roleId?.toString()) || null,
       };
       return userObj;
     });
@@ -398,15 +381,11 @@ const getAllUsersForDC = async (req, res) => {
       },
       ...result,
     });
-
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
-
-
 
 /**
  * Delete user (DC only)
@@ -463,9 +442,6 @@ const deleteUserForDC = async (req, res) => {
     });
   }
 };
-
-
-
 
 /**
  * Update user details (roleId based)
@@ -535,5 +511,5 @@ module.exports = {
   updateUserDetails,
   createMC,
   createUser,
-  deleteUserForDC
+  deleteUserForDC,
 };

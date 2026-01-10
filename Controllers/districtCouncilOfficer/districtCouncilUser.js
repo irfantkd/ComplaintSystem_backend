@@ -116,7 +116,7 @@ const getComplaintsForDCO = async (req, res) => {
 const getUserForDco = async (req, res) => {
   try {
     await checkIsDistrictCouncilOfficer(req, res, async () => {
-      const employeeRoleId = await getRoleId("DISTRICT_COUNCIL_EMPLOYEE");
+      const employeeRoleId = await getRoleId("DISTRICT_COUNCIL_OFFICER");
       console.log(employeeRoleId);
 
       const page = parseInt(req.query.page) || 1;
@@ -229,7 +229,6 @@ const assignTaskToEmployee = async (req, res) => {
   }
 };
 
-// // 4️⃣ DCO can mark complaint as Completed
 // 4️⃣ DCO can update complaint status to ANY valid status
 const updateComplaintStatus = async (req, res) => {
   try {

@@ -9,7 +9,7 @@ const Role = require("../models/roleModels");
 const getRoleId = async (roleName) => {
   const roleConfig = await Role.findOne();
   if (!roleConfig) throw new Error("Role config not found");
-  const role = roleConfig.roles.find(r => r.name === roleName);
+  const role = roleConfig.roles.find((r) => r.name === roleName);
   if (!role) throw new Error(`Role "${roleName}" not found`);
   return role._id.toString();
 };
@@ -27,13 +27,16 @@ const getComplaintsForAC = async (req, res) => {
     }
 
     if (!acUser.tehsilId) {
-      return res.status(400).json({ message: "AC must be assigned to a Tehsil" });
+      return res
+        .status(400)
+        .json({ message: "AC must be assigned to a Tehsil" });
     }
 
     // Query parameters
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const { search, status, categoryId, startDate, endDate, areaType } = req.query;
+    const { search, status, categoryId, startDate, endDate, areaType } =
+      req.query;
 
     // Build dynamic query
     let query = { tehsilId: acUser.tehsilId };
@@ -65,7 +68,10 @@ const getComplaintsForAC = async (req, res) => {
     }
 
     // Mark unseen complaints as seen
-    await Complaint.updateMany({ ...query, seen: false }, { $set: { seen: true, updatedAt: new Date() } });
+    await Complaint.updateMany(
+      { ...query, seen: false },
+      { $set: { seen: true, updatedAt: new Date() } }
+    );
 
     // Fetch paginated results
     const result = await paginate({
@@ -112,14 +118,19 @@ const approveResolution = async (req, res) => {
     }
 
     const complaint = await Complaint.findById(complaintId);
-    if (!complaint) return res.status(404).json({ message: "Complaint not found" });
+    if (!complaint)
+      return res.status(404).json({ message: "Complaint not found" });
 
     if (complaint.tehsilId.toString() !== acUser.tehsilId.toString()) {
-      return res.status(403).json({ message: "Cannot approve complaint from different Tehsil" });
+      return res
+        .status(403)
+        .json({ message: "Cannot approve complaint from different Tehsil" });
     }
 
     if (complaint.status !== "resolved") {
-      return res.status(400).json({ message: "Only RESOLVED complaints can be approved" });
+      return res
+        .status(400)
+        .json({ message: "Only RESOLVED complaints can be approved" });
     }
 
     complaint.status = "completed";
@@ -144,9 +155,6 @@ const approveResolution = async (req, res) => {
 /**
  * Reject complaint resolution
  */
-/**
- * Reject complaint resolution
- */
 const rejectResolution = async (req, res) => {
   try {
     const acUser = req.user;
@@ -159,7 +167,9 @@ const rejectResolution = async (req, res) => {
     }
 
     if (!remark) {
-      return res.status(400).json({ message: "Remark is required for rejection" });
+      return res
+        .status(400)
+        .json({ message: "Remark is required for rejection" });
     }
 
     const complaint = await Complaint.findById(complaintId);
@@ -168,11 +178,15 @@ const rejectResolution = async (req, res) => {
     }
 
     if (complaint.tehsilId.toString() !== acUser.tehsilId.toString()) {
-      return res.status(403).json({ message: "Cannot reject complaint from different Tehsil" });
+      return res
+        .status(403)
+        .json({ message: "Cannot reject complaint from different Tehsil" });
     }
 
     if (complaint.status !== "resolved") {
-      return res.status(400).json({ message: "Only RESOLVED complaints can be rejected" });
+      return res
+        .status(400)
+        .json({ message: "Only RESOLVED complaints can be rejected" });
     }
 
     // Update status to rejected and add AC's remark
@@ -209,20 +223,47 @@ const getACDashboardStats = async (req, res) => {
       return res.status(403).json({ message: "Access denied. AC only." });
     }
 
-    if (!acUser.tehsilId) return res.status(400).json({ message: "AC must be assigned to a Tehsil" });
+    if (!acUser.tehsilId)
+      return res
+        .status(400)
+        .json({ message: "AC must be assigned to a Tehsil" });
 
     const baseQuery = { tehsilId: acUser.tehsilId };
 
     const totalComplaints = await Complaint.countDocuments(baseQuery);
-    const submittedComplaints = await Complaint.countDocuments({ ...baseQuery, status: "SUBMITTED" });
-    const assignedComplaints = await Complaint.countDocuments({ ...baseQuery, status: { $in: ["ASSIGNED", "FORWARDED_TO_MC", "ASSIGNED_TO_EMPLOYEE"] } });
-    const inProgressComplaints = await Complaint.countDocuments({ ...baseQuery, status: "IN_PROGRESS" });
-    const resolvedComplaints = await Complaint.countDocuments({ ...baseQuery, status: "RESOLVED" });
-    const completedComplaints = await Complaint.countDocuments({ ...baseQuery, status: "COMPLETED" });
-    const delayedComplaints = await Complaint.countDocuments({ ...baseQuery, status: "DELAYED" });
-    const rejectedComplaints = await Complaint.countDocuments({ ...baseQuery, status: "REJECTED" });
+    const submittedComplaints = await Complaint.countDocuments({
+      ...baseQuery,
+      status: "SUBMITTED",
+    });
+    const assignedComplaints = await Complaint.countDocuments({
+      ...baseQuery,
+      status: { $in: ["ASSIGNED", "FORWARDED_TO_MC", "ASSIGNED_TO_EMPLOYEE"] },
+    });
+    const inProgressComplaints = await Complaint.countDocuments({
+      ...baseQuery,
+      status: "IN_PROGRESS",
+    });
+    const resolvedComplaints = await Complaint.countDocuments({
+      ...baseQuery,
+      status: "RESOLVED",
+    });
+    const completedComplaints = await Complaint.countDocuments({
+      ...baseQuery,
+      status: "COMPLETED",
+    });
+    const delayedComplaints = await Complaint.countDocuments({
+      ...baseQuery,
+      status: "DELAYED",
+    });
+    const rejectedComplaints = await Complaint.countDocuments({
+      ...baseQuery,
+      status: "REJECTED",
+    });
 
-    const unseenCount = await Complaint.countDocuments({ ...baseQuery, seen: false });
+    const unseenCount = await Complaint.countDocuments({
+      ...baseQuery,
+      seen: false,
+    });
 
     res.status(200).json({
       message: "Dashboard statistics fetched successfully",

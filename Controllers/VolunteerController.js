@@ -11,7 +11,7 @@ const Role = require("../models/roleModels");
 const getRoleId = async (roleName) => {
   const roleConfig = await Role.findOne();
   if (!roleConfig) throw new Error("Role config not found");
-  const role = roleConfig.roles.find(r => r.name === roleName);
+  const role = roleConfig.roles.find((r) => r.name === roleName);
   if (!role) throw new Error(`Role "${roleName}" not found`);
   return role._id.toString();
 };
@@ -87,7 +87,10 @@ const createComplaint = async (req, res) => {
       description,
       categoryId,
       images: uploadResult.secure_url,
-      location: { type: "Point", coordinates: [Number(longitude), Number(latitude)] },
+      location: {
+        type: "Point",
+        coordinates: [Number(longitude), Number(latitude)],
+      },
       locationName,
       areaType,
       createdByVolunteerId: volunteerId,
@@ -105,7 +108,10 @@ const createComplaint = async (req, res) => {
     // 🔔 Fetch officers using roleIds
     const dcUsers = await User.find({ roleId: dcRoleId, zilaId });
     const acUsers = await User.find({ roleId: acRoleId, tehsilId });
-    const mcCooUsers = await User.find({ roleId: mcCooRoleId, $or: [{ tehsilId }, { districtCouncilId }] });
+    const mcCooUsers = await User.find({
+      roleId: mcCooRoleId,
+      $or: [{ tehsilId }, { districtCouncilId }],
+    });
 
     const officersToNotify = [...dcUsers, ...acUsers, ...mcCooUsers];
 
@@ -127,7 +133,6 @@ const createComplaint = async (req, res) => {
       message: "Complaint submitted successfully",
       data: complaint,
     });
-
   } catch (error) {
     console.error("Create Complaint Error:", error);
     return res.status(500).json({
@@ -138,4 +143,26 @@ const createComplaint = async (req, res) => {
   }
 };
 
-module.exports = { createComplaint };
+const getComplaintForVolunteer = async (req, res) => {
+  try {
+    const volunteerUser = req.user;
+    const volunteerRoleId = await getRoleId("VOLUNTEER");
+    if (volunteerUser.roleId.toString() !== volunteerRoleId) {
+      return res.status(403).json({
+        message: "Only volunteers can fetch their complaints",
+      });
+    }
+    const complaints = await Complaint.find({
+      createdByVolunteerId: volunteerUser._id,
+    });
+    return res.status(200).json({
+      success: true,
+      message: "Complaints fetched successfully",
+      data: complaints,
+    });
+  } catch (error) {
+    console.error("Error fetching complaints for volunteer:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+module.exports = { createComplaint, getComplaintForVolunteer };
