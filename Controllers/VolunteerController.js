@@ -143,26 +143,29 @@ const createComplaint = async (req, res) => {
   }
 };
 
-const getComplaintForVolunteer = async (req, res) => {
+const getComplainsOfVolunteer = async (req, res) => {
   try {
-    const volunteerUser = req.user;
-    const volunteerRoleId = await getRoleId("VOLUNTEER");
-    if (volunteerUser.roleId.toString() !== volunteerRoleId) {
-      return res.status(403).json({
-        message: "Only volunteers can fetch their complaints",
-      });
+    const user = req.user;
+    console.log(user);
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized user" });
     }
+
     const complaints = await Complaint.find({
-      createdByVolunteerId: volunteerUser._id,
-    });
+      createdByVolunteerId: user.id,
+    }).sort({ createdAt: -1 });
+
     return res.status(200).json({
       success: true,
-      message: "Complaints fetched successfully",
+      count: complaints.length,
       data: complaints,
     });
   } catch (error) {
-    console.error("Error fetching complaints for volunteer:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
-module.exports = { createComplaint, getComplaintForVolunteer };
+
+module.exports = { createComplaint, getComplainsOfVolunteer };
