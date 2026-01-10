@@ -24,7 +24,7 @@ const seedRoles = async () => {
       "AC",
       "MC_COO",
       "MC_EMPLOYEE",
-      "VOLUNTEER",
+      "USER",
     ];
 
     // Check if RoleConfig already exists

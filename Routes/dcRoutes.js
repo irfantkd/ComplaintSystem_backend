@@ -7,9 +7,11 @@ const {
   updateUserStatusForDC,
   updateUserDetails,
   createUser,
-  updateStatusForDC,
+  approveResolutionForDC,
+  rejectResolutionForDC,
   getAllUsersForDC,
   deleteComplaintForDC,
+  getComplaintByIdForDC
 } = require("../Controllers/dcControllers/dcController");
 const authMiddleware = require("../middlewares/authMiddleware");
 const {
@@ -29,15 +31,18 @@ router.get("/dc/mc/:mcId/single", authMiddleware, getMcByIdForDc);
 router.delete("/dc/mc/:mcId/delete", authMiddleware, deleteMc);
 router.put("/dc/mc/:mcId/update", authMiddleware, updateMcForDc);
 
-router.delete('/dc/complaints/:complaintId',authMiddleware, deleteComplaintForDC);
-router.put('/dc/complaints/:complaintId',authMiddleware, updateStatusForDC);
+// ⚠️ IMPORTANT: GET route must come BEFORE DELETE route
+router.get('/dc/complaints/:complaintId', authMiddleware, getComplaintByIdForDC);
+router.delete('/dc/complaints/:complaintId', authMiddleware, deleteComplaintForDC);
+
+// DC Approve and Reject Routes
+router.post('/dc/complaints/:complaintId/approve', authMiddleware, approveResolutionForDC);
+router.post('/dc/complaints/:complaintId/reject', authMiddleware, rejectResolutionForDC);
+
 router.put('/dc/users/:userId/status', authMiddleware, updateUserStatusForDC);
-router.get('/dc/users',authMiddleware, getAllUsersForDC);
-router.put('/dc/users/:userId/update',authMiddleware,updateUserDetails)
-router.delete('/dc/users/:userId/delete',authMiddleware,deleteUserForDC)
-router.get("/dc/users/by-role",authMiddleware,getUsersByRole);
-// router.post('/dc/create-user',authMiddleware, createUserForDc);
+router.get('/dc/users', authMiddleware, getAllUsersForDC);
+router.put('/dc/users/:userId/update', authMiddleware, updateUserDetails)
+router.delete('/dc/users/:userId/delete', authMiddleware, deleteUserForDC)
+router.get("/dc/users/by-role", authMiddleware, getUsersByRole);
 
-// router.post('/dc/assign-mc-to-coo',authMiddleware, assignMCToCoo);
 module.exports = router;
-
