@@ -76,7 +76,7 @@ const adminSignIn = async (req, res) => {
 
 /**
  * Sign-in for Field roles:
- * MC_EMPLOYEE, VOLUNTEER
+ * MC_EMPLOYEE, USER
  */
 const fieldSignIn = async (req, res) => {
   try {
@@ -91,7 +91,7 @@ const fieldSignIn = async (req, res) => {
     const roleName = await getRoleName(user.roleId);
     if (!roleName) return res.status(403).json({ message: "Role not found or inactive" });
 
-    const fieldRoles = ["MC_EMPLOYEE", "VOLUNTEER"];
+    const fieldRoles = ["MC_EMPLOYEE", "USER"];
     if (!fieldRoles.includes(roleName)) {
       return res.status(403).json({ message: "Access denied: Not a field user" });
     }
