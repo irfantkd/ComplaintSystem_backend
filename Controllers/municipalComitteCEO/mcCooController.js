@@ -13,7 +13,7 @@ const getRoleId = async (roleName) => {
   return role._id.toString();
 };
 
-// Middleware: Only MC_COO can access these routes
+// Middleware: Only MC_CO can access these routes
 const checkIsMcCoo = async (req, res, next) => {
   try {
     if (!req.user || !req.user._id) {
@@ -31,7 +31,7 @@ const checkIsMcCoo = async (req, res, next) => {
       });
     }
 
-    const mcCooRoleId = await getRoleId("MC_COO");
+    const mcCooRoleId = await getRoleId("MC_CO");
     if (user.roleId.toString() !== mcCooRoleId) {
       return res.status(403).json({
         success: false,
@@ -41,10 +41,10 @@ const checkIsMcCoo = async (req, res, next) => {
 
     // Attach tehsilId for use in queries
     req.mcCooTehsilId = user.tehsilId;
-    req.user.roleName = "MC_COO";
+    req.user.roleName = "MC_CO";
     next();
   } catch (error) {
-    console.error("Role check error (MC_COO):", error);
+    console.error("Role check error (MC_CO):", error);
     return res.status(500).json({
       success: false,
       message: "Error verifying role",
@@ -54,68 +54,68 @@ const checkIsMcCoo = async (req, res, next) => {
 };
 
 // 1. Get Complaints for MC COO (City + same tehsil)
-const getComplaintsForMcCoo = async (req, res) => {
-  try {
-    await checkIsMcCoo(req, res, async () => {
-      const baseQuery = {
-        areaType: "City",
-        tehsilId: req.mcCooTehsilId, // Critical: only complaints in this tehsil
-      };
+// const getComplaintsForMcCoo = async (req, res) => {
+//   try {
+//     await checkIsMcCoo(req, res, async () => {
+//       const baseQuery = {
+//         areaType: "City",
+//         tehsilId: req.mcCooTehsilId, // Critical: only complaints in this tehsil
+//       };
 
-      const filterQuery = { ...baseQuery };
+//       const filterQuery = { ...baseQuery };
 
-      if (req.query.status) filterQuery.status = req.query.status;
-      if (req.query.category) {
-        const categoryRegex = new RegExp(req.query.category.trim(), "i");
-        filterQuery.category = categoryRegex;
-      }
-      if (req.query.search) {
-        const searchRegex = new RegExp(req.query.search.trim(), "i");
-        filterQuery.$or = [
-          { title: searchRegex },
-          { description: searchRegex },
-        ];
-      }
+//       if (req.query.status) filterQuery.status = req.query.status;
+//       if (req.query.category) {
+//         const categoryRegex = new RegExp(req.query.category.trim(), "i");
+//         filterQuery.category = categoryRegex;
+//       }
+//       if (req.query.search) {
+//         const searchRegex = new RegExp(req.query.search.trim(), "i");
+//         filterQuery.$or = [
+//           { title: searchRegex },
+//           { description: searchRegex },
+//         ];
+//       }
 
-      const page = parseInt(req.query.page) || 1;
-      const limit = parseInt(req.query.limit) || 10;
+//       const page = parseInt(req.query.page) || 1;
+//       const limit = parseInt(req.query.limit) || 10;
 
-      const populateOptions = [
-        { path: "createdByVolunteerId", select: "name phone" },
-        { path: "zilaId", select: "name" },
-        { path: "tehsilId", select: "name" },
-        { path: "assignedToUserId", select: "name phone" },
-      ];
+//       const populateOptions = [
+//         { path: "createdByVolunteerId", select: "name phone" },
+//         { path: "zilaId", select: "name" },
+//         { path: "tehsilId", select: "name" },
+//         { path: "assignedToUserId", select: "name phone" },
+//       ];
 
-      const result = await paginate({
-        query: filterQuery,
-        model: complaint,
-        page,
-        limit,
-        sort: { createdAt: -1 },
-        populate: populateOptions,
-      });
+//       const result = await paginate({
+//         query: filterQuery,
+//         model: complaint,
+//         page,
+//         limit,
+//         sort: { createdAt: -1 },
+//         populate: populateOptions,
+//       });
 
-      return res.status(200).json({
-        success: true,
-        message: "Complaints fetched successfully",
-        requestedBy: {
-          userId: req.user._id,
-          role: "MC_COO",
-          tehsilId: req.mcCooTehsilId,
-        },
-        ...result,
-      });
-    });
-  } catch (error) {
-    console.error("Error in getComplaintsForMcCoo:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
-  }
-};
+//       return res.status(200).json({
+//         success: true,
+//         message: "Complaints fetched successfully",
+//         requestedBy: {
+//           userId: req.user._id,
+//           role: "MC_CO",
+//           tehsilId: req.mcCooTehsilId,
+//         },
+//         ...result,
+//       });
+//     });
+//   } catch (error) {
+//     console.error("Error in getComplaintsForMcCoo:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Server error",
+//       error: error.message,
+//     });
+//   }
+// };
 
 // 2. Get MC Employees (for assigning tasks)
 const getMcEmployees = async (req, res) => {
@@ -149,7 +149,7 @@ const getMcEmployees = async (req, res) => {
         message: "MC Employees fetched successfully",
         requestedBy: {
           userId: req.user._id,
-          role: "MC_COO",
+          role: "MC_CO",
         },
         ...result,
       });
@@ -217,7 +217,7 @@ const assignTaskToMcEmployee = async (req, res) => {
         message: "Task assigned successfully to MC employee",
         requestedBy: {
           userId: req.user._id,
-          role: "MC_COO",
+          role: "MC_CO",
         },
         complaint: complaintDoc,
       });
@@ -249,7 +249,7 @@ const approveComplaintByMcCoo = async (req, res) => {
         _id: complaintId,
         areaType: "City",
         tehsilId: req.mcCooTehsilId,
-        status: "resolveByEmployee", 
+        status: "resolveByEmployee",
       });
 
       if (!complaintDoc) {
@@ -277,7 +277,7 @@ const approveComplaintByMcCoo = async (req, res) => {
         message: "Complaint approved and marked as resolved",
         requestedBy: {
           userId: req.user._id,
-          role: "MC_COO",
+          role: "MC_CO",
         },
         complaint: complaintDoc,
       });
@@ -291,7 +291,6 @@ const approveComplaintByMcCoo = async (req, res) => {
     });
   }
 };
-
 
 const rejectComplaintByMcCoo = async (req, res) => {
   try {
@@ -335,7 +334,7 @@ const rejectComplaintByMcCoo = async (req, res) => {
         message: "Complaint rejected by MC COO",
         requestedBy: {
           userId: req.user._id,
-          role: "MC_COO",
+          role: "MC_CO",
         },
         complaint: complaintDoc,
       });
@@ -350,9 +349,7 @@ const rejectComplaintByMcCoo = async (req, res) => {
   }
 };
 
-
 module.exports = {
-  getComplaintsForMcCoo,
   getMcEmployees,
   assignTaskToMcEmployee,
   approveComplaintByMcCoo,

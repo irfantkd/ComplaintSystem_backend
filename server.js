@@ -8,7 +8,7 @@ const connectDb = require("./config/Database");
 const complainCategoryRoutes = require("./Routes/ComplainCategoryRoutes");
 const rolesRoutes = require("./Routes/RoleRoutes");
 const authRoutes = require("./Routes/authRoutes");
-const volunteerRoutes = require("./Routes/VolunteerRoutes");
+const volunteerRoutes = require("./Routes/volunteerRoutes");
 const dcRoutes = require("./Routes/dcRoutes");
 const tehsilRoutes = require("./Routes/tehsilRoute");
 const districtCouncilRoutes = require("./Routes/DistrictCouncilRoutes");
@@ -16,7 +16,7 @@ const AcRoutes = require("./Routes/ACRoutes");
 const districtCouncilUserRoutes = require("./Routes/districtCouncilUserRoutes");
 const mcCooRoutes = require("./Routes/mcCooRoutes");
 const employeeRoutes = require("./Routes/employeeRoutes");
-
+const complaintRoutes = require("./Routes/complaintRoutes");
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -35,6 +35,7 @@ app.use("/api", AcRoutes);
 app.use("/api", rolesRoutes);
 app.use("/api", complainCategoryRoutes);
 app.use("/api", employeeRoutes);
+app.use("/api", complaintRoutes);
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log("Server is running...");

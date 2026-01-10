@@ -1,4 +1,4 @@
-const mongoose = require('mongoose')
+const mongoose = require("mongoose");
 
 const mcSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -11,7 +11,7 @@ const mcSchema = new mongoose.Schema({
 
   cooId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User", // role = MC_COO
+    ref: "User", // role = MC_CO
   },
 
   employeeIds: [
@@ -20,7 +20,7 @@ const mcSchema = new mongoose.Schema({
       ref: "User", // role = MC_EMPLOYEE
     },
   ],
-  zilaId:{
+  zilaId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Zila",
     required: true,

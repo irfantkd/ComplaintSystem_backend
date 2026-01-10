@@ -18,7 +18,7 @@ const getRoleId = async (roleName) => {
 
 const createComplaint = async (req, res) => {
   try {
-    const volunteerId = req.user.id;
+    const USERId = req.user.id;
 
     const {
       title,
@@ -33,14 +33,14 @@ const createComplaint = async (req, res) => {
       districtCouncilId,
     } = req.body;
 
-    // 🔐 Volunteer validation using roleId
-    const user = await User.findById(volunteerId);
+    // 🔐 USER validation using roleId
+    const user = await User.findById(USERId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    const volunteerRoleId = await getRoleId("VOLUNTEER");
-    if (user.roleId.toString() !== volunteerRoleId) {
+    const USERRoleId = await getRoleId("USER");
+    if (user.roleId.toString() !== USERRoleId) {
       return res.status(403).json({
-        message: "Only volunteers can create complaints",
+        message: "Only USERs can create complaints",
       });
     }
 
@@ -93,7 +93,7 @@ const createComplaint = async (req, res) => {
       },
       locationName,
       areaType,
-      createdByVolunteerId: volunteerId,
+      createdByVolunteerId: USERId,
       zilaId,
       tehsilId,
       districtCouncilId,
@@ -103,7 +103,7 @@ const createComplaint = async (req, res) => {
     // 🔔 Get roleIds for notifications
     const dcRoleId = await getRoleId("DC");
     const acRoleId = await getRoleId("AC");
-    const mcCooRoleId = await getRoleId("MC_COO");
+    const mcCooRoleId = await getRoleId("MC_CO");
 
     // 🔔 Fetch officers using roleIds
     const dcUsers = await User.find({ roleId: dcRoleId, zilaId });
@@ -143,7 +143,7 @@ const createComplaint = async (req, res) => {
   }
 };
 
-const getComplainsOfVolunteer = async (req, res) => {
+const getComplainsOfUSER = async (req, res) => {
   try {
     const user = req.user;
     console.log(user);
@@ -168,4 +168,4 @@ const getComplainsOfVolunteer = async (req, res) => {
   }
 };
 
-module.exports = { createComplaint, getComplainsOfVolunteer };
+module.exports = { createComplaint, getComplainsOfUSER };

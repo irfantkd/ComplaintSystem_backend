@@ -1,7 +1,6 @@
-const Complaint = require('../models/complaintModel')
-const cloudinary = require("../config/cloudinaryConfig");
+const Complaint = require("../../models/complaintModel");
+const cloudinary = require("../../config/cloudinaryConfig");
 const streamifier = require("streamifier");
-
 
 // ========================================
 // 1. Get All Assigned Complaints
