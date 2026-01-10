@@ -82,7 +82,7 @@ const adminSignIn = async (req, res) => {
 
 /**
  * Sign-in for Field roles:
- * MC_EMPLOYEE, VOLUNTEER
+ * MC_EMPLOYEE, USER
  */
 const fieldSignIn = async (req, res) => {
   try {
@@ -102,9 +102,10 @@ const fieldSignIn = async (req, res) => {
 
     const fieldRoles = [
       "MC_EMPLOYEE",
-      "VOLUNTEER",
+      "USER",
       "DISTRICT_COUNCIL_EMPLOYEE",
     ];
+    
     if (!fieldRoles.includes(roleName)) {
       return res
         .status(403)

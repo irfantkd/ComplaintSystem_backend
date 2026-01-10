@@ -88,7 +88,7 @@ const complaintSchema = new mongoose.Schema(
 
 
 },{
-    timestamps: true, // ← Correct place: second argument (options)
+    timestamps: true, 
   }
 );
 
