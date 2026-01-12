@@ -13,7 +13,7 @@ const getRoleId = async (roleName) => {
   return role._id.toString();
 };
 
-// Middleware: Only MC_COO can access these routes
+
 const checkIsMcCoo = async (req, res, next) => {
   try {
     if (!req.user || !req.user._id) {
@@ -31,7 +31,7 @@ const checkIsMcCoo = async (req, res, next) => {
       });
     }
 
-    const mcCooRoleId = await getRoleId("MC_COO");
+    const mcCooRoleId = await getRoleId("MC_CO");
     if (user.roleId.toString() !== mcCooRoleId) {
       return res.status(403).json({
         success: false,
@@ -53,13 +53,13 @@ const checkIsMcCoo = async (req, res, next) => {
   }
 };
 
-// 1. Get Complaints for MC COO (City + same tehsil)
+
 const getComplaintsForMcCoo = async (req, res) => {
   try {
     await checkIsMcCoo(req, res, async () => {
       const baseQuery = {
         areaType: "City",
-        tehsilId: req.mcCooTehsilId, // Critical: only complaints in this tehsil
+        tehsilId: req.mcCooTehsilId, 
       };
 
       const filterQuery = { ...baseQuery };
@@ -117,7 +117,7 @@ const getComplaintsForMcCoo = async (req, res) => {
   }
 };
 
-// 2. Get MC Employees (for assigning tasks)
+
 const getMcEmployees = async (req, res) => {
   try {
     await checkIsMcCoo(req, res, async () => {
@@ -129,7 +129,7 @@ const getMcEmployees = async (req, res) => {
       const result = await paginate({
         query: {
           roleId: employeeRoleId,
-          tehsilId: req.mcCooTehsilId, // Only employees in the same tehsil
+          tehsilId: req.mcCooTehsilId, 
           isActive: true,
         },
         model: User,

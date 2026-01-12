@@ -7,7 +7,7 @@ require("dotenv").config();
 // 🔑 Generate JWT token
 const generateToken = (user, roleName) => {
   return jwt.sign(
-    { id: user._id, role: roleName }, // store role name in token
+    { id: user._id, role: roleName },
     process.env.JWT_SECRET,
     { expiresIn: "1d" }
   );
@@ -47,7 +47,7 @@ const adminSignIn = async (req, res) => {
       return res.status(403).json({ message: "Role not found or inactive" });
 
     // Only allow admin roles
-    const adminRoles = ["DC", "DISTRICT_COUNCIL_OFFICER", "AC", "MC_COO"];
+    const adminRoles = ["DC", "DISTRICT_COUNCIL_OFFICER", "AC", "MC_CO"];
     if (!adminRoles.includes(roleName)) {
       return res
         .status(403)
