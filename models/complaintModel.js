@@ -83,6 +83,8 @@ const complaintSchema = new mongoose.Schema(
 
     resolutionImage: String,
     resolutionNote: String,
+
+    remarkByDc:String
   },
   {
     timestamps: true,

@@ -17,7 +17,6 @@ const getRoleId = async (roleName) => {
 const createComplaint = async (req, res) => {
   try {
     const USERId = req.user.id;
-    const USERId = req.user.id;
 
     const {
       title,
@@ -33,7 +32,6 @@ const createComplaint = async (req, res) => {
     } = req.body;
 
     // 🔐 USER validation using roleId
-    const user = await User.findById(USERId);
 
     
 
@@ -139,7 +137,7 @@ const createComplaint = async (req, res) => {
       message: "Complaint submitted successfully",
       data: complaint,
     });
-  } catch (error) {
+  }}catch (error) {
     console.error("Create Complaint Error:", error);
     return res.status(500).json({
       success: false,
@@ -149,7 +147,6 @@ const createComplaint = async (req, res) => {
   }
 };
 
-const getComplainsOfUSER = async (req, res) => {
 
 
 
@@ -348,4 +345,4 @@ module.exports = {
   deleteComplaint,
   getUSERNotifications,
   getComplainOfUserById
-};
+}
