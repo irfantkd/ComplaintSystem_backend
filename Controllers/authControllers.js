@@ -7,7 +7,7 @@ require("dotenv").config();
 // 🔑 Generate JWT token
 const generateToken = (user, roleName) => {
   return jwt.sign(
-    { id: user._id, role: roleName }, // store role name in token
+    { id: user._id, role: roleName },
     process.env.JWT_SECRET,
     { expiresIn: "1d" }
   );

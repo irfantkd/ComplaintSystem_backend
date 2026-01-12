@@ -32,6 +32,7 @@ const checkIsMcCoo = async (req, res, next) => {
     }
 
     const mcCooRoleId = await getRoleId("MC_CO");
+    const mcCooRoleId = await getRoleId("MC_CO");
     if (user.roleId.toString() !== mcCooRoleId) {
       return res.status(403).json({
         success: false,
@@ -117,7 +118,7 @@ const checkIsMcCoo = async (req, res, next) => {
 //   }
 // };
 
-// 2. Get MC Employees (for assigning tasks)
+
 const getMcEmployees = async (req, res) => {
   try {
     await checkIsMcCoo(req, res, async () => {
@@ -129,7 +130,7 @@ const getMcEmployees = async (req, res) => {
       const result = await paginate({
         query: {
           roleId: employeeRoleId,
-          tehsilId: req.mcCooTehsilId, // Only employees in the same tehsil
+          tehsilId: req.mcCooTehsilId, 
           isActive: true,
         },
         model: User,
