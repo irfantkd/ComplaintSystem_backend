@@ -519,4 +519,5 @@ module.exports = {
   createMC,
   createUser,
   deleteUserForDC,
+  getComplaintByIdForDC
 };

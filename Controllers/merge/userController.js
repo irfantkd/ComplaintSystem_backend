@@ -60,78 +60,248 @@ const getManagedUsers = async (req, res) => {
       { path: "mcId", select: "name" },
     ];
 
+    // switch (callerRoleName) {
+    //   case "AC":
+    //   case "ASSISTANT_COMMISIONER":
+    //     if (!caller.tehsilId) {
+    //       return res.status(400).json({ message: "Tehsil not assigned to AC" });
+    //     }
+
+    //     const acRoleId = await getRoleId("AC");
+
+    //     baseQuery = {
+    //       roleId: new mongoose.Types.ObjectId(acRoleId),
+    //       tehsilId: caller.tehsilId,
+    //       isActive: true,
+    //     };
+
+    //     responseExtra = {
+    //       requestedBy: {
+    //         userId: caller._id,
+    //         role: "AC",
+    //         tehsilId: caller.tehsilId,
+    //       },
+    //     };
+
+    //     allowedFilters = {
+    //       search: true,
+    //       roleId: true,
+    //       isActive: true,
+    //     };
+
+    //     responseExtra = {
+    //       filtersApplied: {},
+    //     };
+    //     break;
+
+    //   case "MC_CO":
+    //   case "MUNICIPAL_COMMITTEE_CO":
+    //     if (!caller.tehsilId) {
+    //       return res
+    //         .status(400)
+    //         .json({ message: "Tehsil not assigned to MC_CO" });
+    //     }
+    //     if (!caller.areaType) {
+    //       return res
+    //         .status(400)
+    //         .json({ message: "Area type not assigned to MC_CO" });
+    //     }
+
+    //     const mcEmployeeRoleId = await getRoleId("MC_EMPLOYEE");
+
+    //     baseQuery = {
+    //       roleId: new mongoose.Types.ObjectId(mcEmployeeRoleId),
+    //       tehsilId: caller.tehsilId,
+    //       isActive: true,
+    //     };
+
+    //     responseExtra = {
+    //       requestedBy: {
+    //         userId: caller._id,
+    //         role: "MC_CO",
+    //         tehsilId: caller.tehsilId,
+    //       },
+    //     };
+
+    //     allowedFilters = {
+    //       search: true,
+    //       roleId: true,
+    //       isActive: true,
+    //     };
+
+    //     responseExtra = {
+    //       filtersApplied: {},
+    //     };
+    //     break;
+
+    //   // ─────────────── District Council Officer ───────────────
+    //   case "DISTRICT_COUNCIL_OFFICER":
+    //   case "DCO":
+    //     const dcoEmployeeRoleId = await getRoleId("DISTRICT_COUNCIL_EMPLOYEE");
+
+    //     baseQuery = {
+    //       roleId: new mongoose.Types.ObjectId(dcoEmployeeRoleId),
+    //       isActive: true,
+    //     };
+
+    //     responseExtra = {
+    //       requestedBy: {
+    //         userId: caller._id,
+    //         role: "DISTRICT_COUNCIL_OFFICER",
+    //       },
+    //     };
+    //     break;
+
+    //   // ─────────────── Deputy Commissioner ───────────────
+    //   case "DC":
+    //   case "DEPUTY_COMMISSIONER":
+    //     if (!caller.zilaId) {
+    //       return res
+    //         .status(400)
+    //         .json({ message: "District not assigned to DC" });
+    //     }
+
+    //     baseQuery = {
+    //       zilaId: caller.zilaId,
+    //       _id: { $ne: caller._id }, // exclude self
+    //     };
+
+    //     allowedFilters = {
+    //       search: true,
+    //       roleId: true,
+    //       isActive: true,
+    //     };
+
+    //     responseExtra = {
+    //       filtersApplied: {},
+    //     };
+
+    //     // Include roleId for name mapping
+    //     selectFields += " roleId";
+    //     break;
+
+    //   default:
+    //     return res.status(403).json({
+    //       message: "Your role is not authorized to view managed users",
+    //     });
+    // }
+
     switch (callerRoleName) {
-      // ─────────────── MC Chief Officer ───────────────
-      case "MC_CO":
-      case "MUNICIPAL_COMMITTEE_CO":
-        if (!caller.tehsilId) {
-          return res
-            .status(400)
-            .json({ message: "Tehsil not assigned to MC_CO" });
-        }
-
-        const mcEmployeeRoleId = await getRoleId("MC_EMPLOYEE");
-
-        baseQuery = {
-          roleId: new mongoose.Types.ObjectId(mcEmployeeRoleId),
-          tehsilId: caller.tehsilId,
-          isActive: true,
-        };
-
-        responseExtra = {
-          requestedBy: {
-            userId: caller._id,
-            role: "MC_CO",
-            tehsilId: caller.tehsilId,
-          },
-        };
-        break;
-
-      // ─────────────── District Council Officer ───────────────
-      case "DISTRICT_COUNCIL_OFFICER":
-      case "DCO":
-        const dcoRoleId = await getRoleId("DISTRICT_COUNCIL_OFFICER");
-
-        baseQuery = {
-          roleId: new mongoose.Types.ObjectId(dcoRoleId),
-          isActive: true,
-        };
-
-        responseExtra = {
-          requestedBy: {
-            userId: caller._id,
-            role: "DISTRICT_COUNCIL_OFFICER",
-          },
-        };
-        break;
-
-      // ─────────────── Deputy Commissioner ───────────────
+      // ─── DC ───────────────────────────────────────────────────────
       case "DC":
-      case "DEPUTY_COMMISSIONER":
+      case "DEPUTY_COMMISSIONER": {
         if (!caller.zilaId) {
           return res
             .status(400)
             .json({ message: "District not assigned to DC" });
         }
 
+        const excludeRoleIds = await Promise.all([
+          getRoleId("USER"),
+          getRoleId("DC"), // ← uncomment if you want to exclude other DCs
+        ]);
+
         baseQuery = {
           zilaId: caller.zilaId,
-          _id: { $ne: caller._id }, // exclude self
+          roleId: { $nin: excludeRoleIds },
+          _id: { $ne: caller._id },
+          isActive: true,
         };
 
+        selectFields += " roleId";
         allowedFilters = {
           search: true,
           roleId: true,
           isActive: true,
         };
+        break;
+      }
 
-        responseExtra = {
-          filtersApplied: {},
+      // ─── AC ───────────────────────────────────────────────────────
+      case "AC":
+      case "ASSISTANT_COMMISIONER": {
+        if (!caller.tehsilId) {
+          return res.status(400).json({ message: "Tehsil not assigned to AC" });
+        }
+
+        const subordinateRoleIds = await Promise.all([
+          getRoleId("MC_CO"),
+          getRoleId("MC_EMPLOYEE"),
+          getRoleId("DISTRICT_COUNCIL_EMPLOYEE"), // ← added as per your requirement
+        ]);
+        const excludeRoleIds = await Promise.all([
+          getRoleId("USER"),
+          getRoleId("DC"), // ← uncomment if you want to exclude other DCs
+        ]);
+
+        baseQuery = {
+          tehsilId: caller.tehsilId,
+          roleId: { $nin: excludeRoleIds },
+          roleId: { $in: subordinateRoleIds },
+          isActive: true,
         };
 
-        // Include roleId for name mapping
-        selectFields += " roleId";
+        allowedFilters = {
+          search: true,
+          isActive: true,
+          // roleId: true   ← optional: let AC filter by these 3 roles only
+        };
         break;
+      }
+
+      // ─── MC_CO ────────────────────────────────────────────────────
+      case "MC_CO":
+      case "MUNICIPAL_COMMITTEE_CO": {
+        if (!caller.tehsilId || !caller.mcId) {
+          return res.status(400).json({
+            message: "Tehsil and Municipal Committee (mcId) required for MC_CO",
+          });
+        }
+        const excludeRoleIds = await Promise.all([
+          getRoleId("USER"),
+          getRoleId("DC"), // ← uncomment if you want to exclude other DCs
+          getRoleId("AC"), // ← uncomment if you want to exclude other ACs
+        ]);
+
+        baseQuery = {
+          tehsilId: caller.tehsilId,
+          roleId: { $nin: excludeRoleIds },
+          mcId: caller.mcId, // ← critical filter!
+          roleId: await getRoleId("MC_EMPLOYEE"),
+          isActive: true,
+        };
+
+        allowedFilters = {
+          search: true,
+          isActive: true,
+        };
+        break;
+      }
+
+      // ─── DISTRICT_COUNCIL_OFFICER ─────────────────────────────────
+      case "DISTRICT_COUNCIL_OFFICER":
+      case "DCO": {
+        const employeeRoleId = await getRoleId("DISTRICT_COUNCIL_EMPLOYEE");
+        const excludeRoleIds = await Promise.all([
+          getRoleId("USER"),
+          getRoleId("DC"),
+          getRoleId("AC"),
+          getRoleId("MC_CO"),
+        ]);
+
+        baseQuery = {
+          roleId: { $nin: excludeRoleIds },
+          roleId: employeeRoleId,
+          isActive: true,
+          zilaId: caller.zilaId, // ← add this if DCO should only see his district
+        };
+
+        allowedFilters = {
+          search: true,
+          isActive: true,
+        };
+        break;
+      }
 
       default:
         return res.status(403).json({
