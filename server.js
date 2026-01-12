@@ -33,7 +33,7 @@ app.use("/api", AcRoutes);
 app.use("/api", rolesRoutes);
 app.use("/api", complainCategoryRoutes);
 app.use("/api", employeeRoutes);
-
+app.use('/api', dcRoutes)
 app.use("/api", complaintRoutes);
 
 app.listen(PORT, "0.0.0.0", () => {
