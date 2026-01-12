@@ -54,69 +54,69 @@ const checkIsDistrictCouncilOfficer = async (req, res, next) => {
 };
 
 // 1️⃣ Get Complaints for DCO (Village area only)
-const getComplaintsForDCO = async (req, res) => {
-  try {
-    await checkIsDistrictCouncilOfficer(req, res, async () => {
-      const baseQuery = { areaType: "Village" };
-      const filterQuery = { ...baseQuery };
+// const getComplaintsForDCO = async (req, res) => {
+//   try {
+//     await checkIsDistrictCouncilOfficer(req, res, async () => {
+//       const baseQuery = { areaType: "Village" };
+//       const filterQuery = { ...baseQuery };
 
-      if (req.query.status) filterQuery.status = req.query.status;
-      if (req.query.categoryId) filterQuery.categoryId = req.query.categoryId;
+//       if (req.query.status) filterQuery.status = req.query.status;
+//       if (req.query.categoryId) filterQuery.categoryId = req.query.categoryId;
 
-      if (req.query.search) {
-        const searchRegex = new RegExp(req.query.search.trim(), "i");
-        filterQuery.$or = [
-          { title: searchRegex },
-          { description: searchRegex },
-        ];
-      }
+//       if (req.query.search) {
+//         const searchRegex = new RegExp(req.query.search.trim(), "i");
+//         filterQuery.$or = [
+//           { title: searchRegex },
+//           { description: searchRegex },
+//         ];
+//       }
 
-      const page = parseInt(req.query.page) || 1;
-      const limit = parseInt(req.query.limit) || 10;
+//       const page = parseInt(req.query.page) || 1;
+//       const limit = parseInt(req.query.limit) || 10;
 
-      const populateOptions = [
-        { path: "categoryId", select: "name" },
-        { path: "createdByVolunteerId", select: "name phone" },
-        { path: "zilaId", select: "name" },
-        { path: "tehsilId", select: "name" },
-        { path: "districtCouncilId", select: "name" },
-        { path: "assignedToUserId", select: "name phone" },
-      ];
+//       const populateOptions = [
+//         { path: "categoryId", select: "name" },
+//         { path: "createdByVolunteerId", select: "name phone" },
+//         { path: "zilaId", select: "name" },
+//         { path: "tehsilId", select: "name" },
+//         { path: "districtCouncilId", select: "name" },
+//         { path: "assignedToUserId", select: "name phone" },
+//       ];
 
-      const result = await paginate({
-        query: filterQuery,
-        model: complaint,
-        page,
-        limit,
-        sort: { createdAt: -1 },
-        populate: populateOptions,
-      });
+//       const result = await paginate({
+//         query: filterQuery,
+//         model: complaint,
+//         page,
+//         limit,
+//         sort: { createdAt: -1 },
+//         populate: populateOptions,
+//       });
 
-      return res.status(200).json({
-        success: true,
-        message: "Complaints fetched successfully",
-        requestedBy: {
-          userId: req.user._id,
-          role: "DISTRICT_COUNCIL_OFFICER",
-        },
-        ...result,
-      });
-    });
-  } catch (error) {
-    console.error("Error in getComplaintsForDCO:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
-  }
-};
+//       return res.status(200).json({
+//         success: true,
+//         message: "Complaints fetched successfully",
+//         requestedBy: {
+//           userId: req.user._id,
+//           role: "DISTRICT_COUNCIL_OFFICER",
+//         },
+//         ...result,
+//       });
+//     });
+//   } catch (error) {
+//     console.error("Error in getComplaintsForDCO:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Server error",
+//       error: error.message,
+//     });
+//   }
+// };
 
 // 2️⃣ Get all District Council Employees (for assigning tasks)
 const getUserForDco = async (req, res) => {
   try {
     await checkIsDistrictCouncilOfficer(req, res, async () => {
-      const employeeRoleId = await getRoleId("DISTRICT_COUNCIL_EMPLOYEE");
+      const employeeRoleId = await getRoleId("DISTRICT_COUNCIL_OFFICER");
       console.log(employeeRoleId);
 
       const page = parseInt(req.query.page) || 1;
@@ -205,7 +205,15 @@ const assignTaskToEmployee = async (req, res) => {
       complaintDoc.status = "progress";
       complaintDoc.assignedAt = new Date();
 
-      await complaintDoc.save();
+      //notification
+      const notification = new Notification({
+        userId: employeeUserId,
+        title: "New Task Assigned",
+        message: `You have been assigned a new task: ${complaintDoc.title}`,
+        complaintId: complaintDoc._id,
+      });
+
+      await Promise.all([complaintDoc.save(), notification.save()]);
 
       await complaintDoc.populate("assignedToUserId", "name phone");
 
@@ -229,7 +237,6 @@ const assignTaskToEmployee = async (req, res) => {
   }
 };
 
-// // 4️⃣ DCO can mark complaint as Completed
 // 4️⃣ DCO can update complaint status to ANY valid status
 const updateComplaintStatus = async (req, res) => {
   try {
@@ -332,7 +339,6 @@ const updateComplaintStatus = async (req, res) => {
 };
 
 module.exports = {
-  getComplaintsForDCO,
   getUserForDco,
   assignTaskToEmployee,
   updateComplaintStatus,

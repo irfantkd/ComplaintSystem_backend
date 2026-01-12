@@ -25,70 +25,67 @@ const complaintSchema = new mongoose.Schema(
       },
     },
 
+    locationName: String,
 
+    areaType: {
+      type: String,
+      enum: ["Village", "City"],
+      required: true,
+    },
 
-  locationName: String,
+    createdByVolunteerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
 
-  areaType: {
-    type: String,
-    enum: ["Village", "City"],
-    required: true,
+    zilaId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Zila",
+    },
+
+    tehsilId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Tehsil",
+    },
+
+    districtCouncilId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "DistrictCouncil",
+    },
+
+    assignedToRole: String,
+
+    assignedToUserId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    seen: {
+      type: Boolean,
+      default: false,
+    },
+
+    status: {
+      type: String,
+      enum: [
+        "pending",
+        "progress",
+        "resolveByEmployee",
+        "resolved",
+        "completed",
+        "closed",
+        "delayed",
+        "rejected",
+      ],
+      default: "pending",
+    },
+
+    deadline: Date,
+
+    resolutionImage: String,
+    resolutionNote: String,
   },
-
-  createdByVolunteerId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-  },
-
-  zilaId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Zila",
-  },
-
-  tehsilId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Tehsil",
-  },
-
-  districtCouncilId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "DistrictCouncil",
-  },
-
-  assignedToRole: String,
-
-  assignedToUserId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-  },
-  seen:{
-    type: Boolean,
-    default: false
-  },
-
-  status: {
-    type: String,
-    enum: [
-      "pending",
-      "progress",
-      "resolveByEmployee",
-      "resolved",
-      "completed",
-      "closed",
-      "delayed",
-      "rejected",
-    ],
-    default: "pending",
-  },
-
-  deadline: Date,
-
-  resolutionImage: String,
-  resolutionNote: String,
-
-
-},{
-    timestamps: true, // ← Correct place: second argument (options)
+  {
+    timestamps: true,
   }
 );
 

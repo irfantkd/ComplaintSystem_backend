@@ -26,25 +26,15 @@ const checkIsDC = async (user) => {
   return user.roleId.toString() === dcRoleId;
 };
 
-
-
 const createUser = async (req, res) => {
   try {
-    const {
-      name,
-      username,
-      password,
-      phone,
-      roleId,
-      zilaId,
-      tehsilId,
-      mcId
-    } = req.body;
+    const { name, username, password, phone, roleId, zilaId, tehsilId, mcId } =
+      req.body;
 
     // 1️⃣ Required fields
     if (!name || !username || !password || !phone || !roleId || !zilaId) {
       return res.status(400).json({
-        message: "Missing required fields"
+        message: "Missing required fields",
       });
     }
 
@@ -52,7 +42,7 @@ const createUser = async (req, res) => {
     const existingUser = await User.findOne({ username });
     if (existingUser) {
       return res.status(400).json({
-        message: "Username already exists"
+        message: "Username already exists",
       });
     }
 
@@ -60,7 +50,7 @@ const createUser = async (req, res) => {
     const zila = await Zila.findOne({ _id: zilaId });
     if (!zila) {
       return res.status(400).json({
-        message: "Invalid Zila"
+        message: "Invalid Zila",
       });
     }
 
@@ -69,7 +59,7 @@ const createUser = async (req, res) => {
       const tehsil = await Tehsil.findOne({ _id: tehsilId });
       if (!tehsil) {
         return res.status(400).json({
-          message: "Invalid Tehsil"
+          message: "Invalid Tehsil",
         });
       }
     }
@@ -78,7 +68,7 @@ const createUser = async (req, res) => {
       const mc = await MC.findOne({ _id: mcId });
       if (!mc) {
         return res.status(400).json({
-          message: "Invalid MC"
+          message: "Invalid MC",
         });
       }
     }
@@ -95,7 +85,7 @@ const createUser = async (req, res) => {
       roleId,
       zilaId,
       tehsilId: tehsilId || undefined,
-      mcId: mcId || undefined
+      mcId: mcId || undefined,
     });
 
     // 7️⃣ Populate relations
@@ -117,90 +107,84 @@ const createUser = async (req, res) => {
         tehsil: populatedUser.tehsilId,
         mc: populatedUser.mcId,
         isActive: populatedUser.isActive,
-        createdAt: populatedUser.createdAt
-      }
+        createdAt: populatedUser.createdAt,
+      },
     });
-
   } catch (error) {
     console.error("Create User Error:", error);
     return res.status(500).json({
       message: "Server error",
-      error: error.message
+      error: error.message,
     });
   }
 };
-
-
-
-
-
 /**
  * Get complaints for DC
  */
-const getComplaintsForDC = async (req, res) => {
-  try {
-    const dcUser = req.user;
-    if (!(await checkIsDC(dcUser))) {
-      return res.status(403).json({ message: "Access denied. DC only." });
-    }
+// const getComplaintsForDC = async (req, res) => {
+//   try {
+//     const dcUser = req.user;
+//     if (!(await checkIsDC(dcUser))) {
+//       return res.status(403).json({ message: "Access denied. DC only." });
+//     }
 
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const { search, status, categoryId, startDate, endDate } = req.query;
+//     const page = parseInt(req.query.page) || 1;
+//     const limit = parseInt(req.query.limit) || 10;
+//     const { search, status, categoryId, startDate, endDate } = req.query;
 
-    let query = { zilaId: dcUser.zilaId };
+//     let query = { zilaId: dcUser.zilaId };
 
-    if (search && search.trim() !== "") {
-      const searchRegex = new RegExp(search.trim(), "i");
-      query.$or = [{ title: searchRegex }, { description: searchRegex }];
-    }
+//     if (search && search.trim() !== "") {
+//       const searchRegex = new RegExp(search.trim(), "i");
+//       query.$or = [{ title: searchRegex }, { description: searchRegex }];
+//     }
 
-    if (status && status !== "ALL") query.status = status;
-    if (categoryId && categoryId !== "") query.categoryId = categoryId;
+//     if (status && status !== "ALL") query.status = status;
+//     if (categoryId && categoryId !== "") query.categoryId = categoryId;
 
-    if (startDate || endDate) {
-      query.createdAt = {};
-      if (startDate) query.createdAt.$gte = new Date(startDate);
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        query.createdAt.$lte = end;
-      }
-    }
+//     if (startDate || endDate) {
+//       query.createdAt = {};
+//       if (startDate) query.createdAt.$gte = new Date(startDate);
+//       if (endDate) {
+//         const end = new Date(endDate);
+//         end.setHours(23, 59, 59, 999);
+//         query.createdAt.$lte = end;
+//       }
+//     }
 
-    // Mark unseen complaints as seen
-    await Complaint.updateMany(
-      { ...query, seen: false },
-      { $set: { seen: true, updatedAt: new Date() } }
-    );
+//     // Mark unseen complaints as seen
+//     await Complaint.updateMany(
+//       { ...query, seen: false },
+//       { $set: { seen: true, updatedAt: new Date() } }
+//     );
 
-    const result = await paginate({
-      query,
-      model: Complaint,
-      page,
-      limit,
-      sort: { createdAt: -1 },
-      populate: [
-        { path: "createdByVolunteerId", select: "name username" },
-        { path: "categoryId", select: "name" },
-      ],
-    });
+//     const result = await paginate({
+//       query,
+//       model: Complaint,
+//       page,
+//       limit,
+//       sort: { createdAt: -1 },
+//       populate: [
+//         { path: "createdByVolunteerId", select: "name username" },
+//         { path: "categoryId", select: "name" },
+//       ],
+//     });
 
-    res.status(200).json({
-      message: "Complaints fetched successfully",
-      filtersApplied: {
-        search: search || null,
-        status: status || null,
-        categoryId: categoryId || null,
-        dateRange: startDate || endDate ? { startDate, endDate } : null,
-      },
-      ...result,
-    });
-  } catch (error) {
-    console.error("Error fetching complaints for DC:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
+//     res.status(200).json({
+//       message: "Complaints fetched successfully",
+//       filtersApplied: {
+//         search: search || null,
+//         status: status || null,
+//         categoryId: categoryId || null,
+//         dateRange: startDate || endDate ? { startDate, endDate } : null,
+//       },
+//       ...result,
+//     });
+//   } catch (error) {
+//     console.error("Error fetching complaints for DC:", error);
+//     res.status(500).json({ message: "Server error", error: error.message });
+//   }
+// };
 
 /**
  * Delete complaint for DC
@@ -233,13 +217,14 @@ const deleteComplaintForDC = async (req, res) => {
 };
 
 /**
- * Update complaint status for DC
+ * Get single complaint by ID for DC
  */
-const updateStatusForDC = async (req, res) => {
+const getComplaintByIdForDC = async (req, res) => {
   try {
     const dcUser = req.user;
-    if (!(await checkIsDC(dcUser)))
+    if (!(await checkIsDC(dcUser))) {
       return res.status(403).json({ message: "Access denied. DC only." });
+    }
 
     const { complaintId } = req.params;
     const { status } = req.body;
@@ -274,11 +259,17 @@ const updateStatusForDC = async (req, res) => {
     complaint.status = status;
     await complaint.save();
 
-    res
-      .status(200)
-      .json({ message: "Complaint status updated successfully", complaint });
+    res.status(200).json({
+      message: "Complaint resolution approved successfully",
+      complaint: {
+        id: complaint._id,
+        status: complaint.status,
+        title: complaint.title,
+      },
+      remark,
+    });
   } catch (error) {
-    console.error("Error updating complaint status:", error);
+    console.error("Error approving resolution:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -335,8 +326,6 @@ const updateUserStatusForDC = async (req, res) => {
  * Get all users in DC's zila
  */
 
-
-
 const getAllUsersForDC = async (req, res) => {
   try {
     const dcUser = req.user;
@@ -356,13 +345,14 @@ const getAllUsersForDC = async (req, res) => {
     }
 
     if (roleId && roleId !== "ALL") query.roleId = roleId;
-    if (isActive !== undefined && isActive !== "") query.isActive = isActive === "true";
+    if (isActive !== undefined && isActive !== "")
+      query.isActive = isActive === "true";
 
     // 1️⃣ Fetch all roles once
     const roleDoc = await Role.findOne();
     let roleMap = new Map();
     if (roleDoc) {
-      roleDoc.roles.forEach(r => roleMap.set(r._id.toString(), r.name));
+      roleDoc.roles.forEach((r) => roleMap.set(r._id.toString(), r.name));
     }
 
     // 2️⃣ Fetch users with pagination
@@ -380,11 +370,11 @@ const getAllUsersForDC = async (req, res) => {
     });
 
     // 3️⃣ Inject role names using Map (O(1) lookup)
-    result.data = result.data.map(u => {
+    result.data = result.data.map((u) => {
       const userObj = u.toObject();
       userObj.role = {
         id: userObj.roleId,
-        name: roleMap.get(userObj.roleId?.toString()) || null
+        name: roleMap.get(userObj.roleId?.toString()) || null,
       };
       return userObj;
     });
@@ -398,15 +388,11 @@ const getAllUsersForDC = async (req, res) => {
       },
       ...result,
     });
-
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
-
-
 
 /**
  * Delete user (DC only)
@@ -463,9 +449,6 @@ const deleteUserForDC = async (req, res) => {
     });
   }
 };
-
-
-
 
 /**
  * Update user details (roleId based)
@@ -527,13 +510,13 @@ const createMC = async (req, res) => {
 };
 
 module.exports = {
-  getComplaintsForDC,
   deleteComplaintForDC,
-  updateStatusForDC,
+  approveResolutionForDC,
+  rejectResolutionForDC,
   updateUserStatusForDC,
   getAllUsersForDC,
   updateUserDetails,
   createMC,
   createUser,
-  deleteUserForDC
+  deleteUserForDC,
 };
