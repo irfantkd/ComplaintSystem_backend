@@ -274,6 +274,115 @@ const getComplaintByIdForDC = async (req, res) => {
   }
 };
 
+const approveResolutionForDC = async (req, res) => {
+  try {
+    const dcUser = req.user;
+    const dcRoleId = await getRoleId("DC");
+    const { complaintId } = req.params;
+
+    if (dcUser.roleId.toString() !== dcRoleId) {
+      return res.status(403).json({ message: "Access denied. DC only." });
+    }
+
+    const complaint = await Complaint.findById(complaintId);
+    if (!complaint) {
+      return res.status(404).json({ message: "Complaint not found" });
+    }
+
+    if (complaint.zilaId.toString() !== dcUser.zilaId.toString()) {
+      return res.status(403).json({ 
+        message: "Cannot approve complaint from different Zila" 
+      });
+    }
+
+    if (complaint.status !== "resolved") {
+      return res.status(400).json({ 
+        message: "Only RESOLVED complaints can be approved" 
+      });
+    }
+
+    complaint.status = "closed";
+    complaint.updatedAt = new Date();
+    await complaint.save();
+
+    res
+      .status(200)
+      .json({ message: "Complaint status updated successfully", complaint });
+    res.status(200).json({
+      message: "Complaint resolution approved successfully",
+      complaint: {
+        id: complaint._id,
+        status: complaint.status,
+        title: complaint.title,
+      },
+    });
+  } catch (error) {
+    console.error("Error updating complaint status:", error);
+    console.error("Error approving resolution:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+/**
+ * Reject complaint resolution (DC)
+ */
+const rejectResolutionForDC = async (req, res) => {
+  try {
+    const dcUser = req.user;
+    const dcRoleId = await getRoleId("DC");
+    const { complaintId } = req.params;
+    const { remark } = req.body;
+
+    if (dcUser.roleId.toString() !== dcRoleId) {
+      return res.status(403).json({ message: "Access denied. DC only." });
+    }
+
+    if (!remark) {
+      return res.status(400).json({ 
+        message: "Remark is required for rejection" 
+      });
+    }
+
+    const complaint = await Complaint.findById(complaintId);
+    if (!complaint) {
+      return res.status(404).json({ message: "Complaint not found" });
+    }
+
+    if (complaint.zilaId.toString() !== dcUser.zilaId.toString()) {
+      return res.status(403).json({ 
+        message: "Cannot reject complaint from different Zila" 
+      });
+    }
+
+    if (complaint.status !== "resolved") {
+      return res.status(400).json({ 
+        message: "Only RESOLVED complaints can be rejected" 
+      });
+    }
+
+    // Update status to rejected and add DC's remark
+    complaint.status = "rejected";
+    complaint.remarkByDc = remark
+    complaint.rejectedBy = dcUser._id;
+    complaint.rejectedAt = new Date();
+    complaint.updatedAt = new Date();
+    await complaint.save();
+
+    res.status(200).json({
+      message: "Complaint resolution rejected successfully",
+      complaint: {
+        id: complaint._id,
+        status: complaint.status,
+        title: complaint.title,
+        rejectionRemark: remark,
+      },
+    });
+  } catch (error) {
+    console.error("Error rejecting resolution:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 /**
  * Update user active status for DC
  */
@@ -517,6 +626,7 @@ module.exports = {
   getAllUsersForDC,
   updateUserDetails,
   createMC,
+  getComplaintByIdForDC,
   createUser,
   deleteUserForDC,
 };
