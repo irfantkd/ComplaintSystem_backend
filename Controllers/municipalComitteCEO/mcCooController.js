@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const complaint = require("../../models/complaintModel");
 const User = require("../../models/usersModel");
 const Role = require("../../models/roleModels");
@@ -54,70 +55,141 @@ const checkIsMcCoo = async (req, res, next) => {
 };
 
 // 1. Get Complaints for MC COO (City + same tehsil)
-// const getComplaintsForMcCoo = async (req, res) => {
-//   try {
-//     await checkIsMcCoo(req, res, async () => {
-//       const baseQuery = {
-//         areaType: "City",
-//         tehsilId: req.mcCooTehsilId, // Critical: only complaints in this tehsil
-//       };
+const getComplaintsForMcCoo = async (req, res) => {
+  try {
+    await checkIsMcCoo(req, res, async () => {
+      const baseQuery = {
+        areaType: "City",
+        tehsilId: new mongoose.Types.ObjectId(req.mcCooTehsilId),
+      };
 
-//       const filterQuery = { ...baseQuery };
+      const filterQuery = { ...baseQuery };
 
-//       if (req.query.status) filterQuery.status = req.query.status;
-//       if (req.query.category) {
-//         const categoryRegex = new RegExp(req.query.category.trim(), "i");
-//         filterQuery.category = categoryRegex;
-//       }
-//       if (req.query.search) {
-//         const searchRegex = new RegExp(req.query.search.trim(), "i");
-//         filterQuery.$or = [
-//           { title: searchRegex },
-//           { description: searchRegex },
-//         ];
-//       }
+      if (req.query.status && req.query.status !== "ALL") {
+        filterQuery.status = req.query.status;
+      }
+      
+      if (req.query.categoryId) {
+        filterQuery.categoryId = new mongoose.Types.ObjectId(req.query.categoryId);
+      }
+      
+      if (req.query.search) {
+        const searchRegex = new RegExp(req.query.search.trim(), "i");
+        filterQuery.$or = [
+          { title: searchRegex },
+          { description: searchRegex },
+          { locationName: searchRegex },
+        ];
+      }
 
-//       const page = parseInt(req.query.page) || 1;
-//       const limit = parseInt(req.query.limit) || 10;
+      // Date range filter
+      if (req.query.startDate || req.query.endDate) {
+        filterQuery.createdAt = {};
+        if (req.query.startDate) {
+          filterQuery.createdAt.$gte = new Date(req.query.startDate);
+        }
+        if (req.query.endDate) {
+          const end = new Date(req.query.endDate);
+          end.setHours(23, 59, 59, 999);
+          filterQuery.createdAt.$lte = end;
+        }
+      }
 
-//       const populateOptions = [
-//         { path: "createdByVolunteerId", select: "name phone" },
-//         { path: "zilaId", select: "name" },
-//         { path: "tehsilId", select: "name" },
-//         { path: "assignedToUserId", select: "name phone" },
-//       ];
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
 
-//       const result = await paginate({
-//         query: filterQuery,
-//         model: complaint,
-//         page,
-//         limit,
-//         sort: { createdAt: -1 },
-//         populate: populateOptions,
-//       });
+      const populateOptions = [
+        { path: "createdByVolunteerId", select: "name phone email" },
+        { path: "categoryId", select: "name" },
+        { path: "zilaId", select: "name" },
+        { path: "tehsilId", select: "name" },
+        { path: "assignedToUserId", select: "name phone email" },
+      ];
 
-//       return res.status(200).json({
-//         success: true,
-//         message: "Complaints fetched successfully",
-//         requestedBy: {
-//           userId: req.user._id,
-//           role: "MC_CO",
-//           tehsilId: req.mcCooTehsilId,
-//         },
-//         ...result,
-//       });
-//     });
-//   } catch (error) {
-//     console.error("Error in getComplaintsForMcCoo:", error);
-//     return res.status(500).json({
-//       success: false,
-//       message: "Server error",
-//       error: error.message,
-//     });
-//   }
-// };
+      const result = await paginate({
+        query: filterQuery,
+        model: complaint,
+        page,
+        limit,
+        sort: { createdAt: -1 },
+        populate: populateOptions,
+      });
 
+      return res.status(200).json({
+        success: true,
+        message: "Complaints fetched successfully",
+        complaints: result.data || result.docs || result.complaints || [],
+        pagination: {
+          page: result.page || page,
+          limit: result.limit || limit,
+          totalPages: result.totalPages || 0,
+          totalDocs: result.totalDocs || 0,
+          hasNextPage: result.hasNextPage || false,
+          hasPrevPage: result.hasPrevPage || false,
+        },
+        requestedBy: {
+          userId: req.user._id,
+          role: "MC_CO",
+          tehsilId: req.mcCooTehsilId,
+        },
+      });
+    });
+  } catch (error) {
+    console.error("Error in getComplaintsForMcCoo:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
 
+// 2. Get Complaint by ID for MC COO
+const getComplaintByIdForMcCoo = async (req, res) => {
+  try {
+    await checkIsMcCoo(req, res, async () => {
+      const { complaintId } = req.params;
+
+      if (!complaintId) {
+        return res.status(400).json({
+          success: false,
+          message: "complaintId is required",
+        });
+      }
+
+     
+
+      const complaintDoc = await complaint.findById(complaintId).populate("tehsilId","zilaId")
+
+      if (!complaintDoc) {
+        return res.status(404).json({
+          success: false,
+          message: "Complaint not found or not under this MC jurisdiction",
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Complaint fetched successfully",
+        complaint: complaintDoc,
+        requestedBy: {
+          userId: req.user._id,
+          role: "MC_CO",
+          tehsilId: req.mcCooTehsilId,
+        },
+      });
+    });
+  } catch (error) {
+    console.error("Error in getComplaintByIdForMcCoo:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+// 3. Get MC Employees
 const getMcEmployees = async (req, res) => {
   try {
     await checkIsMcCoo(req, res, async () => {
@@ -129,7 +201,7 @@ const getMcEmployees = async (req, res) => {
       const result = await paginate({
         query: {
           roleId: employeeRoleId,
-          tehsilId: req.mcCooTehsilId, 
+          tehsilId: new mongoose.Types.ObjectId(req.mcCooTehsilId),
           isActive: true,
         },
         model: User,
@@ -147,11 +219,19 @@ const getMcEmployees = async (req, res) => {
       return res.status(200).json({
         success: true,
         message: "MC Employees fetched successfully",
+        employees: result.data || result.docs || result.employees || [],
+        pagination: {
+          page: result.page || page,
+          limit: result.limit || limit,
+          totalPages: result.totalPages || 0,
+          totalDocs: result.totalDocs || 0,
+          hasNextPage: result.hasNextPage || false,
+          hasPrevPage: result.hasPrevPage || false,
+        },
         requestedBy: {
           userId: req.user._id,
           role: "MC_CO",
         },
-        ...result,
       });
     });
   } catch (error) {
@@ -164,7 +244,7 @@ const getMcEmployees = async (req, res) => {
   }
 };
 
-// 3. Assign Task to MC Employee
+// 4. Assign Task to MC Employee
 const assignTaskToMcEmployee = async (req, res) => {
   try {
     await checkIsMcCoo(req, res, async () => {
@@ -180,7 +260,7 @@ const assignTaskToMcEmployee = async (req, res) => {
       const complaintDoc = await complaint.findOne({
         _id: complaintId,
         areaType: "City",
-        tehsilId: req.mcCooTehsilId,
+        tehsilId: new mongoose.Types.ObjectId(req.mcCooTehsilId),
       });
 
       if (!complaintDoc) {
@@ -190,11 +270,20 @@ const assignTaskToMcEmployee = async (req, res) => {
         });
       }
 
+      // ✅ CHECK: If complaint is already assigned
+      if (complaintDoc.assignedToUserId) {
+        return res.status(400).json({
+          success: false,
+          message: "This complaint is already assigned to an employee",
+          assignedTo: complaintDoc.assignedToUserId,
+        });
+      }
+
       const employeeRoleId = await getRoleId("MC_EMPLOYEE");
       const employee = await User.findOne({
         _id: employeeUserId,
         roleId: employeeRoleId,
-        tehsilId: req.mcCooTehsilId,
+        tehsilId: new mongoose.Types.ObjectId(req.mcCooTehsilId),
         isActive: true,
       });
 
@@ -206,11 +295,11 @@ const assignTaskToMcEmployee = async (req, res) => {
       }
 
       complaintDoc.assignedToUserId = employeeUserId;
+      complaintDoc.assignedToRole = "MC_EMPLOYEE";
       complaintDoc.status = "progress";
-      complaintDoc.assignedAt = new Date();
 
       await complaintDoc.save();
-      await complaintDoc.populate("assignedToUserId", "name phone");
+      await complaintDoc.populate("assignedToUserId", "name phone email username");
 
       return res.status(200).json({
         success: true,
@@ -232,7 +321,9 @@ const assignTaskToMcEmployee = async (req, res) => {
   }
 };
 
-// 4. Update Complaint Status (Dynamic - any valid status)
+
+
+// 5. Approve Complaint by MC COO
 const approveComplaintByMcCoo = async (req, res) => {
   try {
     await checkIsMcCoo(req, res, async () => {
@@ -248,7 +339,7 @@ const approveComplaintByMcCoo = async (req, res) => {
       const complaintDoc = await complaint.findOne({
         _id: complaintId,
         areaType: "City",
-        tehsilId: req.mcCooTehsilId,
+        tehsilId: new mongoose.Types.ObjectId(req.mcCooTehsilId),
         status: "resolveByEmployee",
       });
 
@@ -261,16 +352,19 @@ const approveComplaintByMcCoo = async (req, res) => {
       }
 
       complaintDoc.status = "resolved";
-      complaintDoc.updatedBy = req.user._id;
-      complaintDoc.completedAt = new Date();
-      complaintDoc.completedBy = req.user._id;
 
       if (note && note.trim()) {
-        complaintDoc.resolutionNote = note.trim();
+        complaintDoc.remarkByDc = note.trim();
       }
 
       await complaintDoc.save();
-      await complaintDoc.populate("assignedToUserId", "name phone");
+      await complaintDoc.populate([
+        { path: "assignedToUserId", select: "name phone email" },
+        { path: "createdByVolunteerId", select: "name phone" },
+        { path: "categoryId", select: "name" },
+        {path:"zilaId",select:"name"}
+
+      ]);
 
       return res.status(200).json({
         success: true,
@@ -292,6 +386,7 @@ const approveComplaintByMcCoo = async (req, res) => {
   }
 };
 
+// 6. Reject Complaint by MC COO
 const rejectComplaintByMcCoo = async (req, res) => {
   try {
     await checkIsMcCoo(req, res, async () => {
@@ -307,8 +402,8 @@ const rejectComplaintByMcCoo = async (req, res) => {
       const complaintDoc = await complaint.findOne({
         _id: complaintId,
         areaType: "City",
-        tehsilId: req.mcCooTehsilId,
-        status: "resolveByEmployee", // 🔐 strict check
+        tehsilId: new mongoose.Types.ObjectId(req.mcCooTehsilId),
+        status: "resolveByEmployee",
       });
 
       if (!complaintDoc) {
@@ -320,14 +415,17 @@ const rejectComplaintByMcCoo = async (req, res) => {
       }
 
       complaintDoc.status = "rejected";
-      complaintDoc.updatedBy = req.user._id;
 
       if (note && note.trim()) {
-        complaintDoc.resolutionNote = note.trim();
+        complaintDoc.remarkByDc = note.trim();
       }
 
       await complaintDoc.save();
-      await complaintDoc.populate("assignedToUserId", "name phone");
+      await complaintDoc.populate([
+        { path: "assignedToUserId", select: "name phone email" },
+        { path: "createdByVolunteerId", select: "name phone" },
+        { path: "categoryId", select: "name" },
+      ]);
 
       return res.status(200).json({
         success: true,
@@ -350,6 +448,8 @@ const rejectComplaintByMcCoo = async (req, res) => {
 };
 
 module.exports = {
+  getComplaintsForMcCoo,
+  getComplaintByIdForMcCoo,
   getMcEmployees,
   assignTaskToMcEmployee,
   approveComplaintByMcCoo,

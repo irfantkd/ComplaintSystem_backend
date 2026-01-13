@@ -1,6 +1,10 @@
 const mongoose = require('mongoose')
 
 const districtCouncilSchema = new mongoose.Schema({
+
+  name:{
+    type:String
+  },
   zilaId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Zila",
