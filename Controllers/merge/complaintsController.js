@@ -249,9 +249,6 @@ const getMyJurisdictionComplaints = async (req, res) => {
   }
 };
 
-// ────────────────────────────────────────────────────────────────
-// Very useful helper you'll probably use many places
-// ────────────────────────────────────────────────────────────────
 let roleCache = null;
 
 async function getRoleNameById(roleId) {

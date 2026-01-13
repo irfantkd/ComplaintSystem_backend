@@ -12,27 +12,27 @@ const {
 const authMiddleware = require("../middlewares/authMiddleware");
 
 router.post(
-  "/USER/create-complain",
+  "/user/create-complain",
   authMiddleware,
   upload.single("image"),
   createComplaint
 );
-router.get("/USER/get-complains", authMiddleware, getComplainsOfUSER);
+router.get("/user/get-complains", authMiddleware, getComplainsOfUSER);
 router.get(
-  "/USER/get-complains/:ComplaintId",
+  "/user/get-complains/:ComplaintId",
   authMiddleware,
   getComplainOfUserById
 );
 router.put(
-  "/USER/complaints/:complaintId/update",
+  "/user/complaints/:complaintId/update",
   authMiddleware,
   updateComplaint
 );
 router.delete(
-  "/USER/complaints/:complaintId/delete",
+  "/user/complaints/:complaintId/delete",
   authMiddleware,
   deleteComplaint
 );
-router.get("/USER/notifications", authMiddleware, getUSERNotifications);
+router.get("/user/notifications", authMiddleware, getUSERNotifications);
 
 module.exports = router;

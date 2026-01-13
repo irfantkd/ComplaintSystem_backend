@@ -4,7 +4,7 @@ const cloudinary = require("../config/cloudinaryConfig");
 const streamifier = require("streamifier");
 const User = require("../models/usersModel");
 const Role = require("../models/roleModels");
-
+const zilaModel = require("../models/zilaModel");
 
 const getRoleId = async (roleName) => {
   const roleConfig = await Role.findOne();
@@ -31,23 +31,19 @@ const createComplaint = async (req, res) => {
       districtCouncilId,
     } = req.body;
 
-    // 🔐 USER validation using roleId
-
-    
-
+    // Find user
     const user = await User.findById(USERId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    const USERRoleId = await getRoleId("USER");
-    if (user.roleId.toString() !== USERRoleId) {
+    // Check if user has USER role
     const USERRoleId = await getRoleId("USER");
     if (user.roleId.toString() !== USERRoleId) {
       return res.status(403).json({
         message: "Only USERs can create complaints",
-        message: "Only USERs can create complaints",
       });
     }
 
+    // Basic validations
     if (!description) {
       return res.status(400).json({ message: "Description is required" });
     }
@@ -68,7 +64,7 @@ const createComplaint = async (req, res) => {
       return res.status(400).json({ message: "Complaint image is required" });
     }
 
-    // ☁️ Cloudinary Upload (Buffer → Stream)
+    // Cloudinary Upload (Buffer → Stream)
     const streamUpload = (buffer) => {
       return new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
@@ -84,7 +80,7 @@ const createComplaint = async (req, res) => {
 
     const uploadResult = await streamUpload(req.file.buffer);
 
-    // 📝 Create Complaint
+    // Create Complaint
     const complaint = await Complaint.create({
       title,
       description,
@@ -97,19 +93,18 @@ const createComplaint = async (req, res) => {
       locationName,
       areaType,
       createdByVolunteerId: USERId,
-      createdByVolunteerId: USERId,
       zilaId,
       tehsilId,
       districtCouncilId,
       status: "pending",
     });
 
-    // 🔔 Get roleIds for notifications
+    // Get roleIds for notifications
     const dcRoleId = await getRoleId("DC");
     const acRoleId = await getRoleId("AC");
     const mcCooRoleId = await getRoleId("MC_CO");
 
-    // 🔔 Fetch officers using roleIds
+    // Fetch officers using roleIds
     const dcUsers = await User.find({ roleId: dcRoleId, zilaId });
     const acUsers = await User.find({ roleId: acRoleId, tehsilId });
     const mcCooUsers = await User.find({
@@ -119,7 +114,7 @@ const createComplaint = async (req, res) => {
 
     const officersToNotify = [...dcUsers, ...acUsers, ...mcCooUsers];
 
-    // 🔔 Create Notifications
+    // Create Notifications
     const notifications = officersToNotify.map((officer) => ({
       userId: officer._id,
       title: "New Complaint Submitted",
@@ -131,13 +126,13 @@ const createComplaint = async (req, res) => {
       await Notification.insertMany(notifications);
     }
 
-    // ✅ Response
+    // Success response
     return res.status(201).json({
       success: true,
       message: "Complaint submitted successfully",
       data: complaint,
     });
-  }}catch (error) {
+  } catch (error) {
     console.error("Create Complaint Error:", error);
     return res.status(500).json({
       success: false,
@@ -146,10 +141,6 @@ const createComplaint = async (req, res) => {
     });
   }
 };
-
-
-
-
 const getComplainsOfUSER = async (req, res) => {
   try {
     const user = req.user;
@@ -174,29 +165,27 @@ const getComplainsOfUSER = async (req, res) => {
   }
 };
 
-const getComplainOfUserById = async(req,res)=>{
-  try{
-    const user = req.user
-    const { ComplaintId } = req.params
-    if(!user){
-      return res.status(400).json({message:"Uer is not found"})
+const getComplainOfUserById = async (req, res) => {
+  try {
+    const user = req.user;
+    const { ComplaintId } = req.params;
+    if (!user) {
+      return res.status(400).json({ message: "Uer is not found" });
     }
 
-    const complaint = await ComplaintById(ComplaintId)
-    if(!complaint){
-      return res.status(400).json({message:"Complaint not found"})
+    const complaint = await ComplaintById(ComplaintId);
+    if (!complaint) {
+      return res.status(400).json({ message: "Complaint not found" });
     }
 
     return res.status(200).json({
-      message:"Successfully fetched complaint",
-      complaint:complaint
-    })
+      message: "Successfully fetched complaint",
+      complaint: complaint,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
   }
-  catch(error){
-    return res.status(500).json({message:error.message})
-  }
-}
-
+};
 
 const updateComplaint = async (req, res) => {
   try {
@@ -209,7 +198,7 @@ const updateComplaint = async (req, res) => {
     if (!complaint) {
       return res.status(404).json({
         success: false,
-        message: "Complaint not found"
+        message: "Complaint not found",
       });
     }
 
@@ -217,7 +206,7 @@ const updateComplaint = async (req, res) => {
     if (complaint.createdByVolunteerId.toString() !== USERId) {
       return res.status(403).json({
         success: false,
-        message: "You can only update your own complaints"
+        message: "You can only update your own complaints",
       });
     }
 
@@ -225,7 +214,7 @@ const updateComplaint = async (req, res) => {
     if (complaint.status !== "pending") {
       return res.status(400).json({
         success: false,
-        message: "Cannot update complaint once it's been assigned"
+        message: "Cannot update complaint once it's been assigned",
       });
     }
 
@@ -239,13 +228,12 @@ const updateComplaint = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Complaint updated successfully",
-      data: complaint
+      data: complaint,
     });
-
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -263,7 +251,7 @@ const deleteComplaint = async (req, res) => {
     if (!complaint) {
       return res.status(404).json({
         success: false,
-        message: "Complaint not found"
+        message: "Complaint not found",
       });
     }
 
@@ -271,7 +259,7 @@ const deleteComplaint = async (req, res) => {
     if (complaint.createdByVolunteerId.toString() !== USERId) {
       return res.status(403).json({
         success: false,
-        message: "You can only delete your own complaints"
+        message: "You can only delete your own complaints",
       });
     }
 
@@ -279,7 +267,7 @@ const deleteComplaint = async (req, res) => {
     if (complaint.status !== "pending") {
       return res.status(400).json({
         success: false,
-        message: "Cannot delete complaint once it's been assigned"
+        message: "Cannot delete complaint once it's been assigned",
       });
     }
 
@@ -287,13 +275,12 @@ const deleteComplaint = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Complaint deleted successfully"
+      message: "Complaint deleted successfully",
     });
-
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -307,15 +294,15 @@ const getUSERNotifications = async (req, res) => {
     const { page = 1, limit = 20 } = req.query;
 
     const notifications = await Notification.find({ userId: USERId })
-      .populate('complaintId', 'title status')
+      .populate("complaintId", "title status")
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
 
     const total = await Notification.countDocuments({ userId: USERId });
-    const unreadCount = await Notification.countDocuments({ 
-      userId: USERId, 
-      isRead: false 
+    const unreadCount = await Notification.countDocuments({
+      userId: USERId,
+      isRead: false,
     });
 
     return res.status(200).json({
@@ -325,24 +312,22 @@ const getUSERNotifications = async (req, res) => {
         total,
         page: Number(page),
         pages: Math.ceil(total / limit),
-        unreadCount
-      }
+        unreadCount,
+      },
     });
-
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
 
-
-module.exports = { 
+module.exports = {
   createComplaint,
   getComplainsOfUSER,
   updateComplaint,
   deleteComplaint,
   getUSERNotifications,
-  getComplainOfUserById
-}
+  getComplainOfUserById,
+};
