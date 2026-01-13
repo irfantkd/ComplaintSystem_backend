@@ -13,11 +13,7 @@ const authMiddleware = require("../middlewares/authMiddleware"); // your JWT mid
 // router.get("/mc-coo/complaints",authMiddleware,getComplaintsForMcCoo);
 router.get("/mc-coo/employees", authMiddleware, getMcEmployees);
 router.post("/mc-coo/assign-task", authMiddleware, assignTaskToMcEmployee);
-router.patch(
-  "/mc-coo/approve-complain",
-  authMiddleware,
-  approveComplaintByMcCoo
-);
+router.patch("/mc-coo/approve-complain",authMiddleware,approveComplaintByMcCoo);
 router.patch("/mc-coo/reject-complain", authMiddleware, rejectComplaintByMcCoo);
 
 module.exports = router;

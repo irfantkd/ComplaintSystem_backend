@@ -32,7 +32,6 @@ const checkIsMcCoo = async (req, res, next) => {
     }
 
     const mcCooRoleId = await getRoleId("MC_CO");
-    const mcCooRoleId = await getRoleId("MC_CO");
     if (user.roleId.toString() !== mcCooRoleId) {
       return res.status(403).json({
         success: false,
