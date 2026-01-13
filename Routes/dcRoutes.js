@@ -3,7 +3,6 @@ const router = express.Router();
 const {
   createMC,
   deleteUserForDC,
-
   updateUserStatusForDC,
   updateUserDetails,
   createUser,
