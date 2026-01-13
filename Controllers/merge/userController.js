@@ -284,6 +284,7 @@ const getRoleNameById = async (roleId) => {
 const getManagedUsers = async (req, res) => {
   try {
     const caller = req.user;
+    console.log(caller)
 
     if (!caller?.roleId) {
       return res.status(403).json({ message: "Role not assigned" });
@@ -348,7 +349,7 @@ const getManagedUsers = async (req, res) => {
 
       case "MC_CO":
       case "MUNICIPAL_COMMITTEE_CO": {
-        if (!caller.tehsilId || !caller.mcId) {
+        if (!caller.tehsilId) {
           return res
             .status(400)
             .json({ message: "Tehsil/MC not assigned to MC_CO" });
