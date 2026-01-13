@@ -227,49 +227,27 @@ const getComplaintByIdForDC = async (req, res) => {
     }
 
     const { complaintId } = req.params;
-    const { status } = req.body;
-
-    const allowedStatuses = [
-      "pending",
-      "progress",
-      "resolved",
-      "completed",
-      "closed",
-      "delayed",
-      "rejected",
-      "resolveByEmployee",
-    ];
-
-    if (!status || !allowedStatuses.includes(status))
-      return res.status(400).json({
-        message: `Invalid status. Must be one of: ${allowedStatuses.join(
-          ", "
-        )}`,
-      });
 
     const complaint = await Complaint.findOne({
       _id: complaintId,
-      zilaId: dcUser.zilaId,
     });
-    if (!complaint)
+    
+    if (!complaint) {
       return res
         .status(404)
         .json({ message: "Complaint not found or access denied." });
-
-    complaint.status = status;
-    await complaint.save();
+    }
 
     res.status(200).json({
-      message: "Complaint resolution approved successfully",
+      message: "Complaint retrieved successfully",
       complaint: {
         id: complaint._id,
         status: complaint.status,
         title: complaint.title,
       },
-      remark,
     });
   } catch (error) {
-    console.error("Error approving resolution:", error);
+    console.error("Error retrieving complaint:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
