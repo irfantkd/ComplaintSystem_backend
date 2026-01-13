@@ -3,10 +3,11 @@ const bcrypt = require('bcryptjs');
 const Zila = require('../models/zilaModel');        // Your Zila model
 const User = require('../models/usersModel');       // Your User model
 const Role = require('../models/roleModels');        // Your Role model
-require('dotenv').config();
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
+
 
 // Use the env variable if available
-const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://irfantkd:pc120irfan@notetakeing.yze0q5w.mongodb.net/COMPLAINTSYSTEM";
+const MONGO_URI = process.env.MONGO_URI
 
 if (!MONGO_URI) {
   console.error('Error: MONGO_URI is not defined in .env file');

@@ -32,28 +32,12 @@ router.delete("/dc/mc/:mcId/delete", authMiddleware, deleteMc);
 router.put("/dc/mc/:mcId/update", authMiddleware, updateMcForDc);
 
 // ⚠️ IMPORTANT: GET route must come BEFORE DELETE route
-router.get(
-  "/dc/complaints/:complaintId",
-  authMiddleware,
-  getComplaintByIdForDC
-);
-router.delete(
-  "/dc/complaints/:complaintId",
-  authMiddleware,
-  deleteComplaintForDC
-);
+router.get("/dc/complaints/:complaintId",authMiddleware,getComplaintByIdForDC);
+router.delete("/dc/complaints/:complaintId",authMiddleware,deleteComplaintForDC);
 
 // DC Approve and Reject Routes
-router.post(
-  "/dc/complaints/:complaintId/approve",
-  authMiddleware,
-  approveResolutionForDC
-);
-router.post(
-  "/dc/complaints/:complaintId/reject",
-  authMiddleware,
-  rejectResolutionForDC
-);
+router.post("/dc/complaints/:complaintId/approve",authMiddleware,approveResolutionForDC);
+router.post("/dc/complaints/:complaintId/reject",authMiddleware,rejectResolutionForDC);
 
 router.put("/dc/users/:userId/status", authMiddleware, updateUserStatusForDC);
 router.get("/dc/users", authMiddleware, getAllUsersForDC);

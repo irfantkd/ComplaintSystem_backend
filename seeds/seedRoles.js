@@ -1,11 +1,11 @@
 const mongoose = require("mongoose");
 const Role = require("../models/roleModels"); // Adjust path if needed
-require("dotenv").config();
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
+
 
 // MongoDB connection
 const MONGO_URI =
-  process.env.MONGO_URI ||
-  "mongodb+srv://irfantkd:pc120irfan@notetakeing.yze0q5w.mongodb.net/COMPLAINTSYSTEM";
+  process.env.MONGO_URI 
 
 if (!MONGO_URI) {
   console.error("Error: MONGO_URL is not defined in .env file");
