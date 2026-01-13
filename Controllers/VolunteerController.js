@@ -17,6 +17,7 @@ const getRoleId = async (roleName) => {
 const createComplaint = async (req, res) => {
   try {
     const USERId = req.user.id;
+    console.log(USERId)
 
     const {
       title,
@@ -37,6 +38,7 @@ const createComplaint = async (req, res) => {
 
     // Check if user has USER role
     const USERRoleId = await getRoleId("USER");
+    console.log(USERRoleId)
     if (user.roleId.toString() !== USERRoleId) {
       return res.status(403).json({
         message: "Only USERs can create complaints",
