@@ -84,29 +84,32 @@ async function getJurisdictionFilterAndPopulate(user) {
       break;
 
     case "DC":
-    case "DEPUTY_COMMISSIONER":
-      if (!user.zilaId) {
-        throw new Error("District (zila) not assigned to this DC");
-      }
+case "DEPUTY_COMMISSIONER":
+  if (!user.zilaId) {
+    throw new Error("District (zila) not assigned to this DC");
+  }
 
-      result.baseQuery = { zilaId: user.zilaId };
+  result.baseQuery = { zilaId: user.zilaId };
 
-      result.specialActions = async (query) => {
-        await Complaint.updateMany(
-          { ...query, seen: false },
-          { $set: { seen: true, updatedAt: new Date() } }
-        );
-      };
+  result.specialActions = async (query) => {
+    await Complaint.updateMany(
+      { ...query, seen: false },
+      { $set: { seen: true, updatedAt: new Date() } }
+    );
+  };
 
-      result.populate = [
-        { path: "createdByVolunteerId", select: "name username" },
-        { path: "categoryId", select: "name" },
-      ];
+  result.populate = [
+    { path: "createdByVolunteerId", select: "name username" },
+    { path: "categoryId", select: "name" },
+    { path: "zilaId", select: "name" },        // ← ADD THIS
+    { path: "tehsilId", select: "name" },      // ← ADD THIS
+    { path: "assignedToUserId", select: "name username roleId" }, // ← OPTIONAL: Add this too
+  ];
 
-      result.extraResponse = {
-        filtersApplied: {},
-      };
-      break;
+  result.extraResponse = {
+    filtersApplied: {},
+  };
+  break;
 
     case "DISTRICT_COUNCIL_OFFICER":
     case "DCO":
