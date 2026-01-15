@@ -28,8 +28,17 @@ const checkIsDC = async (user) => {
 
 const createUser = async (req, res) => {
   try {
-    const { name, username, password, phone, roleId, zilaId, tehsilId, mcId } =
-      req.body;
+    const {
+      name,
+      username,
+      password,
+      phone,
+      roleId,
+      zilaId,
+      tehsilId,
+      mcId,
+      districtCouncilId,
+    } = req.body;
 
     // 1️⃣ Required fields
     if (!name || !username || !password || !phone || !roleId || !zilaId) {
@@ -44,6 +53,17 @@ const createUser = async (req, res) => {
       return res.status(400).json({
         message: "Username already exists",
       });
+    }
+    const AC_ROLE_ID = await getRoleId("AC");
+
+    const isAC = roleId.toString() === AC_ROLE_ID.toString();
+
+    if (isAC) {
+      if (!tehsilId) {
+        return res.status(400).json({
+          message: "AC role requires tehsilId",
+        });
+      }
     }
 
     // 3️⃣ Validate Zila exists (no ObjectId check)
@@ -290,14 +310,14 @@ const approveResolutionForDC = async (req, res) => {
     }
 
     if (complaint.zilaId.toString() !== dcUser.zilaId.toString()) {
-      return res.status(403).json({ 
-        message: "Cannot approve complaint from different Zila" 
+      return res.status(403).json({
+        message: "Cannot approve complaint from different Zila",
       });
     }
 
     if (complaint.status !== "resolved") {
-      return res.status(400).json({ 
-        message: "Only RESOLVED complaints can be approved" 
+      return res.status(400).json({
+        message: "Only RESOLVED complaints can be approved",
       });
     }
 
@@ -338,8 +358,8 @@ const rejectResolutionForDC = async (req, res) => {
     }
 
     if (!remark) {
-      return res.status(400).json({ 
-        message: "Remark is required for rejection" 
+      return res.status(400).json({
+        message: "Remark is required for rejection",
       });
     }
 
@@ -349,20 +369,20 @@ const rejectResolutionForDC = async (req, res) => {
     }
 
     if (complaint.zilaId.toString() !== dcUser.zilaId.toString()) {
-      return res.status(403).json({ 
-        message: "Cannot reject complaint from different Zila" 
+      return res.status(403).json({
+        message: "Cannot reject complaint from different Zila",
       });
     }
 
     if (complaint.status !== "resolved") {
-      return res.status(400).json({ 
-        message: "Only RESOLVED complaints can be rejected" 
+      return res.status(400).json({
+        message: "Only RESOLVED complaints can be rejected",
       });
     }
 
     // Update status to rejected and add DC's remark
     complaint.status = "rejected";
-    complaint.remarkByDc = remark
+    complaint.remarkByDc = remark;
     complaint.rejectedBy = dcUser._id;
     complaint.rejectedAt = new Date();
     complaint.updatedAt = new Date();
@@ -629,5 +649,5 @@ module.exports = {
   getComplaintByIdForDC,
   createUser,
   deleteUserForDC,
-  getComplaintByIdForDC
+  getComplaintByIdForDC,
 };
