@@ -327,7 +327,7 @@ const assignTaskToMcEmployee = async (req, res) => {
 const approveComplaintByMcCoo = async (req, res) => {
   try {
     await checkIsMcCoo(req, res, async () => {
-      const { complaintId, note } = req.body;
+      const { complaintId } = req.params;  
 
       if (!complaintId) {
         return res.status(400).json({
@@ -353,17 +353,14 @@ const approveComplaintByMcCoo = async (req, res) => {
 
       complaintDoc.status = "resolved";
 
-      if (note && note.trim()) {
-        complaintDoc.remarkByDc = note.trim();
-      }
 
       await complaintDoc.save();
+
       await complaintDoc.populate([
         { path: "assignedToUserId", select: "name phone email" },
         { path: "createdByVolunteerId", select: "name phone" },
         { path: "categoryId", select: "name" },
-        {path:"zilaId",select:"name"}
-
+        { path: "zilaId", select: "name" },
       ]);
 
       return res.status(200).json({
@@ -386,11 +383,13 @@ const approveComplaintByMcCoo = async (req, res) => {
   }
 };
 
+
 // 6. Reject Complaint by MC COO
 const rejectComplaintByMcCoo = async (req, res) => {
   try {
     await checkIsMcCoo(req, res, async () => {
-      const { complaintId, note } = req.body;
+      const { complaintId } = req.params;   // 👈 params se
+      const { note } = req.body;
 
       if (!complaintId) {
         return res.status(400).json({
@@ -421,6 +420,7 @@ const rejectComplaintByMcCoo = async (req, res) => {
       }
 
       await complaintDoc.save();
+
       await complaintDoc.populate([
         { path: "assignedToUserId", select: "name phone email" },
         { path: "createdByVolunteerId", select: "name phone" },
@@ -446,6 +446,7 @@ const rejectComplaintByMcCoo = async (req, res) => {
     });
   }
 };
+
 
 module.exports = {
   getComplaintsForMcCoo,

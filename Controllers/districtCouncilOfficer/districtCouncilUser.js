@@ -53,66 +53,7 @@ const checkIsDistrictCouncilOfficer = async (req, res, next) => {
   }
 };
 
-// 1️⃣ Get Complaints for DCO (Village area only)
-// const getComplaintsForDCO = async (req, res) => {
-//   try {
-//     await checkIsDistrictCouncilOfficer(req, res, async () => {
-//       const baseQuery = { areaType: "Village" };
-//       const filterQuery = { ...baseQuery };
-
-//       if (req.query.status) filterQuery.status = req.query.status;
-//       if (req.query.categoryId) filterQuery.categoryId = req.query.categoryId;
-
-//       if (req.query.search) {
-//         const searchRegex = new RegExp(req.query.search.trim(), "i");
-//         filterQuery.$or = [
-//           { title: searchRegex },
-//           { description: searchRegex },
-//         ];
-//       }
-
-//       const page = parseInt(req.query.page) || 1;
-//       const limit = parseInt(req.query.limit) || 10;
-
-//       const populateOptions = [
-//         { path: "categoryId", select: "name" },
-//         { path: "createdByVolunteerId", select: "name phone" },
-//         { path: "zilaId", select: "name" },
-//         { path: "tehsilId", select: "name" },
-//         { path: "districtCouncilId", select: "name" },
-//         { path: "assignedToUserId", select: "name phone" },
-//       ];
-
-//       const result = await paginate({
-//         query: filterQuery,
-//         model: complaint,
-//         page,
-//         limit,
-//         sort: { createdAt: -1 },
-//         populate: populateOptions,
-//       });
-
-//       return res.status(200).json({
-//         success: true,
-//         message: "Complaints fetched successfully",
-//         requestedBy: {
-//           userId: req.user._id,
-//           role: "DISTRICT_COUNCIL_OFFICER",
-//         },
-//         ...result,
-//       });
-//     });
-//   } catch (error) {
-//     console.error("Error in getComplaintsForDCO:", error);
-//     return res.status(500).json({
-//       success: false,
-//       message: "Server error",
-//       error: error.message,
-//     });
-//   }
-// };
-
-// 2️⃣ Get all District Council Employees (for assigning tasks)
+// 1️⃣ Get all District Council Employees (for assigning tasks)
 const getUserForDco = async (req, res) => {
   try {
     await checkIsDistrictCouncilOfficer(req, res, async () => {
@@ -159,7 +100,7 @@ const getUserForDco = async (req, res) => {
   }
 };
 
-// 3️⃣ Assign Task to Employee
+// 2️⃣ Assign Task to Employee
 const assignTaskToEmployee = async (req, res) => {
   try {
     await checkIsDistrictCouncilOfficer(req, res, async () => {
@@ -185,6 +126,15 @@ const assignTaskToEmployee = async (req, res) => {
         });
       }
 
+      // ✅ CHECK: If complaint is already assigned
+      if (complaintDoc.assignedToUserId) {
+        return res.status(400).json({
+          success: false,
+          message: "This complaint is already assigned to an employee",
+          assignedTo: complaintDoc.assignedToUserId,
+        });
+      }
+
       // Validate employee
       const employeeRoleId = await getRoleId("DISTRICT_COUNCIL_EMPLOYEE");
       const employee = await User.findOne({
@@ -202,20 +152,12 @@ const assignTaskToEmployee = async (req, res) => {
 
       // Assign
       complaintDoc.assignedToUserId = employeeUserId;
+      complaintDoc.assignedToRole = "DISTRICT_COUNCIL_EMPLOYEE";
       complaintDoc.status = "progress";
       complaintDoc.assignedAt = new Date();
 
-      //notification
-      const notification = new Notification({
-        userId: employeeUserId,
-        title: "New Task Assigned",
-        message: `You have been assigned a new task: ${complaintDoc.title}`,
-        complaintId: complaintDoc._id,
-      });
-
-      await Promise.all([complaintDoc.save(), notification.save()]);
-
-      await complaintDoc.populate("assignedToUserId", "name phone");
+      await complaintDoc.save();
+      await complaintDoc.populate("assignedToUserId", "name phone email username");
 
       return res.status(200).json({
         success: true,
@@ -237,7 +179,7 @@ const assignTaskToEmployee = async (req, res) => {
   }
 };
 
-// 4️⃣ DCO can update complaint status to ANY valid status
+// 3️⃣ DCO can update complaint status to ANY valid status
 const updateComplaintStatus = async (req, res) => {
   try {
     await checkIsDistrictCouncilOfficer(req, res, async () => {
@@ -338,8 +280,137 @@ const updateComplaintStatus = async (req, res) => {
   }
 };
 
+// 4️⃣ Approve Complaint by DCO
+const approveComplaintByDco = async (req, res) => {
+  try {
+    await checkIsDistrictCouncilOfficer(req, res, async () => {
+      const { complaintId } = req.params;   // 👈 params se
+                // note body me reh sakta hai
+
+      if (!complaintId) {
+        return res.status(400).json({
+          success: false,
+          message: "complaintId is required",
+        });
+      }
+
+      const complaintDoc = await complaint.findOne({
+        _id: complaintId,
+        areaType: "Village",
+        status: "resolveByEmployee",
+      });
+
+      if (!complaintDoc) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Complaint not found, not under District Council jurisdiction, or not eligible for approval",
+        });
+      }
+
+      complaintDoc.status = "resolved";
+
+      await complaintDoc.save();
+
+      await complaintDoc.populate([
+        { path: "assignedToUserId", select: "name phone email" },
+        { path: "createdByVolunteerId", select: "name phone" },
+        { path: "categoryId", select: "name" },
+        { path: "zilaId", select: "name" },
+        { path: "tehsilId", select: "name" },
+        { path: "districtCouncilId", select: "name" },
+      ]);
+
+      return res.status(200).json({
+        success: true,
+        message: "Complaint approved and marked as resolved",
+        requestedBy: {
+          userId: req.user._id,
+          role: "DISTRICT_COUNCIL_OFFICER",
+        },
+        complaint: complaintDoc,
+      });
+    });
+  } catch (error) {
+    console.error("Error in approveComplaintByDco:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+// 5️⃣ Reject Complaint by DCO
+const rejectComplaintByDco = async (req, res) => {
+  try {
+    await checkIsDistrictCouncilOfficer(req, res, async () => {
+      const { complaintId } = req.params;   // 👈 params se
+      const { note } = req.body;             // note body me
+
+      if (!complaintId) {
+        return res.status(400).json({
+          success: false,
+          message: "complaintId is required",
+        });
+      }
+
+      const complaintDoc = await complaint.findOne({
+        _id: complaintId,
+        areaType: "Village",
+        status: "resolveByEmployee",
+      });
+
+      if (!complaintDoc) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Complaint not found, not under District Council jurisdiction, or not eligible for rejection",
+        });
+      }
+
+      complaintDoc.status = "rejected";
+
+      if (note && note.trim()) {
+        complaintDoc.remarkByDc = note.trim();
+      }
+
+      await complaintDoc.save();
+
+      await complaintDoc.populate([
+        { path: "assignedToUserId", select: "name phone email" },
+        { path: "createdByVolunteerId", select: "name phone" },
+        { path: "categoryId", select: "name" },
+        { path: "zilaId", select: "name" },
+        { path: "tehsilId", select: "name" },
+        { path: "districtCouncilId", select: "name" },
+      ]);
+
+      return res.status(200).json({
+        success: true,
+        message: "Complaint rejected by District Council Officer",
+        requestedBy: {
+          userId: req.user._id,
+          role: "DISTRICT_COUNCIL_OFFICER",
+        },
+        complaint: complaintDoc,
+      });
+    });
+  } catch (error) {
+    console.error("Error in rejectComplaintByDco:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getUserForDco,
   assignTaskToEmployee,
   updateComplaintStatus,
+  approveComplaintByDco,
+  rejectComplaintByDco,
+  checkIsDistrictCouncilOfficer,
 };

@@ -16,7 +16,7 @@ router.get("/mc-coo/complaints", authMiddleware, getComplaintsForMcCoo);
 router.get("/mc-coo/complaints/:complaintId", authMiddleware, getComplaintByIdForMcCoo); // ← Added
 router.get("/mc-coo/employees", authMiddleware, getMcEmployees);
 router.post("/mc-coo/assign-task", authMiddleware, assignTaskToMcEmployee);
-router.patch("/mc-coo/approve-complain", authMiddleware, approveComplaintByMcCoo);
-router.patch("/mc-coo/reject-complain", authMiddleware, rejectComplaintByMcCoo);
+router.patch("/complaints/:complaintId/mc/approve", authMiddleware, approveComplaintByMcCoo);
+router.patch("/complaints/:complaintId/mc/reject", authMiddleware, rejectComplaintByMcCoo);
 
 module.exports = router;
