@@ -6,11 +6,9 @@ require("dotenv").config();
 
 // 🔑 Generate JWT token
 const generateToken = (user, roleName) => {
-  return jwt.sign(
-    { id: user._id, role: roleName },
-    process.env.JWT_SECRET,
-    { expiresIn: "1d" }
-  );
+  return jwt.sign({ id: user._id, role: roleName }, process.env.JWT_SECRET, {
+    expiresIn: "1d",
+  });
 };
 
 /**
@@ -33,6 +31,7 @@ const getRoleName = async (roleId) => {
 const adminSignIn = async (req, res) => {
   try {
     const { username, password } = req.body;
+    console.log(username, password);
     if (!username || !password)
       return res
         .status(400)

@@ -1,4 +1,4 @@
-const mongoose = require('mongoose')
+const mongoose = require("mongoose");
 
 const notificationSchema = new mongoose.Schema({
   userId: {
@@ -13,7 +13,10 @@ const notificationSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Complaint",
   },
-
+  tehsilId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Tehsil",
+  },
   isRead: { type: Boolean, default: false },
 
   createdAt: { type: Date, default: Date.now },
