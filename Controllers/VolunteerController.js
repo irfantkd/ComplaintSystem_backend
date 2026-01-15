@@ -5,19 +5,21 @@ const streamifier = require("streamifier");
 const User = require("../models/usersModel");
 const Role = require("../models/roleModels");
 const zilaModel = require("../models/zilaModel");
+const { getRoleId } = require("../utils/roleHelpers");
+const Tehsil = require("../models/tehsilModel");
 
-const getRoleId = async (roleName) => {
-  const roleConfig = await Role.findOne();
-  if (!roleConfig) throw new Error("Role config not found");
-  const role = roleConfig.roles.find((r) => r.name === roleName);
-  if (!role) throw new Error(`Role "${roleName}" not found`);
-  return role._id.toString();
-};
+// const getRoleId = async (roleName) => {
+//   const roleConfig = await Role.findOne();
+//   if (!roleConfig) throw new Error("Role config not found");
+//   const role = roleConfig.roles.find((r) => r.name === roleName);
+//   if (!role) throw new Error(`Role "${roleName}" not found`);
+//   return role._id.toString();
+// };
 
 const createComplaint = async (req, res) => {
   try {
     const USERId = req.user.id;
-    console.log(USERId)
+    console.log(USERId);
 
     const {
       title,
@@ -30,6 +32,7 @@ const createComplaint = async (req, res) => {
       zilaId,
       tehsilId,
       districtCouncilId,
+      mcId,
     } = req.body;
 
     // Find user
@@ -38,11 +41,17 @@ const createComplaint = async (req, res) => {
 
     // Check if user has USER role
     const USERRoleId = await getRoleId("USER");
-    console.log(USERRoleId)
+    console.log(USERRoleId);
     if (user.roleId.toString() !== USERRoleId) {
       return res.status(403).json({
         message: "Only USERs can create complaints",
       });
+    }
+    if (tehsilId) {
+      const tehsil = await Tehsil.findById(tehsilId);
+      if (!tehsil) {
+        return res.status(404).json({ message: "Tehsil not found" });
+      }
     }
 
     // Basic validations
@@ -54,6 +63,13 @@ const createComplaint = async (req, res) => {
       return res.status(400).json({
         message: "Valid areaType is required (Village or City)",
       });
+    }
+
+    if (areaType === "Village" && !districtCouncilId) {
+      return res.status(400).json({ message: "District council required" });
+    }
+    if (areaType === "City" && !mcId) {
+      return res.status(400).json({ message: "MC required" });
     }
 
     if (!latitude || !longitude) {
@@ -96,37 +112,135 @@ const createComplaint = async (req, res) => {
       areaType,
       createdByVolunteerId: USERId,
       zilaId,
+      mcId,
       tehsilId,
       districtCouncilId,
       status: "pending",
     });
 
-    // Get roleIds for notifications
-    const dcRoleId = await getRoleId("DC");
-    const acRoleId = await getRoleId("AC");
-    const mcCooRoleId = await getRoleId("MC_CO");
+    // ── Notification Logic ──────────────────────────────────────────────────────
 
-    // Fetch officers using roleIds
-    const dcUsers = await User.find({ roleId: dcRoleId, zilaId });
-    const acUsers = await User.find({ roleId: acRoleId, tehsilId });
-    const mcCooUsers = await User.find({
-      roleId: mcCooRoleId,
-      $or: [{ tehsilId }, { districtCouncilId }],
-    });
+    // Get required role IDs
+    const [dcRoleId, acRoleId, mcCoRoleId, distCouncilOfficerRoleId] =
+      await Promise.all([
+        getRoleId("DC"),
+        getRoleId("AC"),
+        getRoleId("MC_CO"),
+        getRoleId("DISTRICT_COUNCIL_OFFICER"),
+      ]);
 
-    const officersToNotify = [...dcUsers, ...acUsers, ...mcCooUsers];
+    // 1. DC(s) of the zila
+    const dcUsers = await User.find({
+      roleId: dcRoleId,
+      zilaId,
+    })
+      .select("_id")
+      .lean();
 
-    // Create Notifications
-    const notifications = officersToNotify.map((officer) => ({
-      userId: officer._id,
-      title: "New Complaint Submitted",
-      message: `A new complaint has been submitted in ${areaType} area (${locationName})`,
+    // 2. AC(s) of the tehsil
+    const acUsers = await User.find({
+      roleId: acRoleId,
+      tehsilId,
+    })
+      .select("_id")
+      .lean();
+
+    // 3. Area type specific primary officers
+    let primaryOfficers = [];
+
+    if (areaType === "City") {
+      primaryOfficers = await User.find({
+        roleId: mcCoRoleId,
+        mcId, // most common case - adjust if you use mcId
+      })
+        .select("_id")
+        .lean();
+    } else if (areaType === "Village") {
+      const query = districtCouncilId ? { districtCouncilId } : { zilaId };
+
+      primaryOfficers = await User.find({
+        roleId: distCouncilOfficerRoleId,
+        ...query,
+      })
+        .select("_id")
+        .lean();
+    }
+
+    // Combine all unique officer IDs
+    const uniqueOfficerIds = [
+      ...dcUsers.map((u) => u._id.toString()),
+      ...acUsers.map((u) => u._id.toString()),
+      ...primaryOfficers.map((u) => u._id.toString()),
+    ];
+
+    const finalOfficerIds = [...new Set(uniqueOfficerIds)].filter(Boolean);
+
+    // Get socket.io instance
+    const io = req.app.get("io");
+
+    // ── Create persistent notifications in DB ───────────────────────────────
+    const notifications = finalOfficerIds.map((userId) => ({
+      userId,
+      title: "A new complaint has been registered!",
+      message: `A new complaint has been registered in the ${
+        areaType === "City" ? "urban" : "rural"
+      } area - ${locationName || "location"}`,
       complaintId: complaint._id,
     }));
 
     if (notifications.length > 0) {
       await Notification.insertMany(notifications);
     }
+
+    // ── Send real-time notification via Socket.io ───────────────────────────
+    if (io && finalOfficerIds.length > 0) {
+      const notificationPayload = {
+        title: "New Complaint Registered",
+        message: `A new complaint has been registered in the ${
+          areaType === "City" ? "urban" : "rural"
+        } area - ${locationName || "location"}`,
+        complaintId: complaint._id.toString(),
+        areaType,
+        locationName: locationName || "Unknown location",
+        createdAt: new Date().toISOString(),
+        isRead: false,
+      };
+
+      finalOfficerIds.forEach((userId) => {
+        io.to(userId).emit("new-complaint", notificationPayload);
+      });
+
+      console.log(
+        `Real-time notification sent to ${finalOfficerIds.length} officers`
+      );
+    }
+
+    // Get roleIds for notifications
+    // const dcRoleId = await getRoleId("DC");
+    // const acRoleId = await getRoleId("AC");
+    // const mcCooRoleId = await getRoleId("MC_CO");
+
+    // // Fetch officers using roleIds
+    // const dcUsers = await User.find({ roleId: dcRoleId, zilaId });
+    // const acUsers = await User.find({ roleId: acRoleId, tehsilId });
+    // const mcCooUsers = await User.find({
+    //   roleId: mcCooRoleId,
+    //   $or: [{ tehsilId }, { districtCouncilId }],
+    // });
+
+    // const officersToNotify = [...dcUsers, ...acUsers, ...mcCooUsers];
+
+    // // Create Notifications
+    // const notifications = officersToNotify.map((officer) => ({
+    //   userId: officer._id,
+    //   title: "New Complaint Submitted",
+    //   message: `A new complaint has been submitted in ${areaType} area (${locationName})`,
+    //   complaintId: complaint._id,
+    // }));
+
+    // if (notifications.length > 0) {
+    //   await Notification.insertMany(notifications);
+    // }
 
     // Success response
     return res.status(201).json({
@@ -143,6 +257,7 @@ const createComplaint = async (req, res) => {
     });
   }
 };
+
 const getComplainsOfUSER = async (req, res) => {
   try {
     const user = req.user;

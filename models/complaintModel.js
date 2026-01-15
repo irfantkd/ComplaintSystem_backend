@@ -59,6 +59,10 @@ const complaintSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
+    mcId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "MC",
+    },
     seen: {
       type: Boolean,
       default: false,
@@ -84,7 +88,7 @@ const complaintSchema = new mongoose.Schema(
     resolutionImage: String,
     resolutionNote: String,
 
-    remarkByDc:String
+    remarkByDc: String,
   },
   {
     timestamps: true,

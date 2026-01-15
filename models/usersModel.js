@@ -29,6 +29,10 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "MC",
   },
+  districtCouncilId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "DistrictCouncil",
+  },
 
   isActive: { type: Boolean, default: true },
 

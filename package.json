@@ -10,14 +10,11 @@
     "multer": "^2.0.2",
     "multer-storage-cloudinary": "^4.0.0",
     "nodemon": "^3.1.11",
+    "socket.io": "^4.8.3",
     "streamifier": "^0.1.1"
-    
   },
   "scripts": {
     "start": "nodemon server.js",
     "dev": "nodemon server.js"
   }
-  
 }
-
-
