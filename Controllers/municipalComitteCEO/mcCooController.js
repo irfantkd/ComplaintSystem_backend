@@ -1,8 +1,10 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 const complaint = require("../../models/complaintModel");
 const User = require("../../models/usersModel");
 const Role = require("../../models/roleModels");
 const { paginate } = require("../../utils/pagination");
+const notification = require("../../models/notificationModel");
+const { Socket } = require("socket.io");
 
 // Helper: Get sub-role _id by name
 const getRoleId = async (roleName) => {
@@ -68,11 +70,13 @@ const getComplaintsForMcCoo = async (req, res) => {
       if (req.query.status && req.query.status !== "ALL") {
         filterQuery.status = req.query.status;
       }
-      
+
       if (req.query.categoryId) {
-        filterQuery.categoryId = new mongoose.Types.ObjectId(req.query.categoryId);
+        filterQuery.categoryId = new mongoose.Types.ObjectId(
+          req.query.categoryId
+        );
       }
-      
+
       if (req.query.search) {
         const searchRegex = new RegExp(req.query.search.trim(), "i");
         filterQuery.$or = [
@@ -157,9 +161,9 @@ const getComplaintByIdForMcCoo = async (req, res) => {
         });
       }
 
-     
-
-      const complaintDoc = await complaint.findById(complaintId).populate("tehsilId","zilaId")
+      const complaintDoc = await complaint
+        .findById(complaintId)
+        .populate("tehsilId", "zilaId");
 
       if (!complaintDoc) {
         return res.status(404).json({
@@ -299,7 +303,42 @@ const assignTaskToMcEmployee = async (req, res) => {
       complaintDoc.status = "progress";
 
       await complaintDoc.save();
-      await complaintDoc.populate("assignedToUserId", "name phone email username");
+      await complaintDoc.populate(
+        "assignedToUserId",
+        "name phone email username"
+      );
+      const mcEmployeeRoleId = await getRoleId("MC_EMPLOYEE");
+      if (!mcEmployeeRoleId) {
+        return res.status(400).json({
+          success: false,
+          message: "MC Employee role not found",
+        });
+      }
+
+      const io = req.app.get("io");
+
+      const notificationPayload = {
+        userId: employeeUserId,
+        title: "New Task Assigned",
+        message: `You have been assigned a new task for complaint ${complaintDoc.title}`,
+        complaintId: complaintId,
+        areaType: "City",
+        locationName: complaintDoc.locationName,
+        createdAt: new Date().toISOString(),
+        isRead: false,
+      };
+
+      io.to(employeeUserId).emit("new-task", notificationPayload);
+
+      const notificationData = {
+        userId: employeeUserId,
+        roleId: mcEmployeeRoleId,
+        title: "New Task Assigned",
+        message: `You have been assigned a new task for complaint ${complaintDoc.title}`,
+        complaintId: complaintId,
+      };
+
+      await notification.create(notificationData);
 
       return res.status(200).json({
         success: true,
@@ -321,13 +360,11 @@ const assignTaskToMcEmployee = async (req, res) => {
   }
 };
 
-
-
 // 5. Approve Complaint by MC COO
 const approveComplaintByMcCoo = async (req, res) => {
   try {
     await checkIsMcCoo(req, res, async () => {
-      const { complaintId } = req.params;  
+      const { complaintId } = req.params;
 
       if (!complaintId) {
         return res.status(400).json({
@@ -352,7 +389,6 @@ const approveComplaintByMcCoo = async (req, res) => {
       }
 
       complaintDoc.status = "resolved";
-
 
       await complaintDoc.save();
 
@@ -383,12 +419,11 @@ const approveComplaintByMcCoo = async (req, res) => {
   }
 };
 
-
 // 6. Reject Complaint by MC COO
 const rejectComplaintByMcCoo = async (req, res) => {
   try {
     await checkIsMcCoo(req, res, async () => {
-      const { complaintId } = req.params;   // 👈 params se
+      const { complaintId } = req.params; // 👈 params se
       const { note } = req.body;
 
       if (!complaintId) {
@@ -446,7 +481,6 @@ const rejectComplaintByMcCoo = async (req, res) => {
     });
   }
 };
-
 
 module.exports = {
   getComplaintsForMcCoo,

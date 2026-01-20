@@ -2,6 +2,7 @@ const complaint = require("../../models/complaintModel");
 const User = require("../../models/usersModel");
 const Role = require("../../models/roleModels");
 const { paginate } = require("../../utils/pagination");
+const notification = require("../../models/notificationModel");
 
 // Helper: Get sub-role _id by name
 const getRoleId = async (roleName) => {
@@ -157,7 +158,38 @@ const assignTaskToEmployee = async (req, res) => {
       complaintDoc.assignedAt = new Date();
 
       await complaintDoc.save();
-      await complaintDoc.populate("assignedToUserId", "name phone email username");
+      await complaintDoc.populate(
+        "assignedToUserId",
+        "name phone email username"
+      );
+
+      //notification
+      // ── Notification Logic ────────────────────────────────────────
+      const io = req.app.get("io");
+
+      const messageText = `You have been assigned a new task for complaint: ${complaintDoc.title}`;
+
+      const notificationPayload = {
+        title: "New Task Assigned",
+        message: messageText,
+        complaintId: complaintId.toString(),
+        areaType: "Village",
+        locationName: complaintDoc.locationName || "Unknown location",
+        createdAt: new Date().toISOString(),
+        isRead: false,
+      };
+
+      // Real-time via socket.io
+      io.to(employeeUserId.toString()).emit("new-task", notificationPayload);
+
+      // Persistent in DB
+      await Notification.create({
+        userId: employeeUserId,
+        roleId: employeeRoleId,
+        title: "New Task Assigned",
+        message: messageText,
+        complaintId: complaintDoc._id,
+      });
 
       return res.status(200).json({
         success: true,
@@ -284,8 +316,8 @@ const updateComplaintStatus = async (req, res) => {
 const approveComplaintByDco = async (req, res) => {
   try {
     await checkIsDistrictCouncilOfficer(req, res, async () => {
-      const { complaintId } = req.params;   // 👈 params se
-                // note body me reh sakta hai
+      const { complaintId } = req.params; // 👈 params se
+      // note body me reh sakta hai
 
       if (!complaintId) {
         return res.status(400).json({
@@ -345,8 +377,8 @@ const approveComplaintByDco = async (req, res) => {
 const rejectComplaintByDco = async (req, res) => {
   try {
     await checkIsDistrictCouncilOfficer(req, res, async () => {
-      const { complaintId } = req.params;   // 👈 params se
-      const { note } = req.body;             // note body me
+      const { complaintId } = req.params; // 👈 params se
+      const { note } = req.body; // note body me
 
       if (!complaintId) {
         return res.status(400).json({

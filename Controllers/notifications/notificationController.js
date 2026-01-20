@@ -1,16 +1,13 @@
 // controllers/notificationController.js
 const Notification = require("../../models/notificationModel");
 
-// @desc    Get all notifications for current user
-// @route   GET /api/notifications
-// @access  Private
 const getUserNotifications = async (req, res) => {
-  const userId = req.user.id; // from your auth middleware
+  const userId = req.user.id;
 
   const notifications = await Notification.find({ userId })
-    .sort({ createdAt: -1 }) // newest first
-    .limit(50) // reasonable limit - add pagination later if needed
-    .populate("complaintId", "title description locationName areaType status") // optional: enrich with complaint info
+    .sort({ createdAt: -1 })
+    .limit(50)
+    .populate("complaintId", "title description locationName areaType status")
     .lean();
 
   res.status(200).json({
@@ -20,9 +17,6 @@ const getUserNotifications = async (req, res) => {
   });
 };
 
-// @desc    Mark all notifications as read for current user
-// @route   PATCH /api/notifications/read-all
-// @access  Private
 const markAllAsRead = async (req, res) => {
   const userId = req.user.id;
 

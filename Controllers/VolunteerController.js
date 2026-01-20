@@ -7,19 +7,12 @@ const Role = require("../models/roleModels");
 const zilaModel = require("../models/zilaModel");
 const { getRoleId } = require("../utils/roleHelpers");
 const Tehsil = require("../models/tehsilModel");
-
-// const getRoleId = async (roleName) => {
-//   const roleConfig = await Role.findOne();
-//   if (!roleConfig) throw new Error("Role config not found");
-//   const role = roleConfig.roles.find((r) => r.name === roleName);
-//   if (!role) throw new Error(`Role "${roleName}" not found`);
-//   return role._id.toString();
-// };
+const MC = require("../models/MCModel");
+const DistrictCouncil = require("../models/DistrictCouncilModel");
 
 const createComplaint = async (req, res) => {
   try {
     const USERId = req.user.id;
-    console.log(USERId);
 
     const {
       title,
@@ -31,8 +24,6 @@ const createComplaint = async (req, res) => {
       locationName,
       zilaId,
       tehsilId,
-      districtCouncilId,
-      mcId,
     } = req.body;
 
     // Find user
@@ -41,12 +32,12 @@ const createComplaint = async (req, res) => {
 
     // Check if user has USER role
     const USERRoleId = await getRoleId("USER");
-    console.log(USERRoleId);
     if (user.roleId.toString() !== USERRoleId) {
       return res.status(403).json({
         message: "Only USERs can create complaints",
       });
     }
+
     if (tehsilId) {
       const tehsil = await Tehsil.findById(tehsilId);
       if (!tehsil) {
@@ -59,17 +50,13 @@ const createComplaint = async (req, res) => {
       return res.status(400).json({ message: "Description is required" });
     }
 
+    if (!zilaId) {
+      return res.status(400).json({ message: "zilaId is required" });
+    }
     if (!areaType || !["Village", "City"].includes(areaType)) {
       return res.status(400).json({
         message: "Valid areaType is required (Village or City)",
       });
-    }
-
-    if (areaType === "Village" && !districtCouncilId) {
-      return res.status(400).json({ message: "District council required" });
-    }
-    if (areaType === "City" && !mcId) {
-      return res.status(400).json({ message: "MC required" });
     }
 
     if (!latitude || !longitude) {
@@ -80,6 +67,43 @@ const createComplaint = async (req, res) => {
 
     if (!req.file) {
       return res.status(400).json({ message: "Complaint image is required" });
+    }
+
+    let mcId = null;
+    let districtCouncilId = null;
+
+    if (areaType === "City") {
+      if (!tehsilId) {
+        return res.status(400).json({
+          message: "tehsilId is required for City area complaints",
+        });
+      }
+
+      // Verify tehsil exists
+      const tehsil = await Tehsil.findById(tehsilId);
+      if (!tehsil) {
+        return res.status(404).json({ message: "Tehsil not found" });
+      }
+
+      // Find Municipal Committee (MC) for this tehsil
+      const mc = await MC.findOne({ tehsilId, zilaId });
+      if (!mc) {
+        return res.status(404).json({
+          message: "No Municipal Committee (MC) found for this tehsil",
+        });
+      }
+
+      mcId = mc._id;
+    } else if (areaType === "Village") {
+      // Find District Council for this zila
+      const districtCouncil = await DistrictCouncil.findOne({ zilaId });
+      if (!districtCouncil) {
+        return res.status(404).json({
+          message: "No District Council found for this zila",
+        });
+      }
+
+      districtCouncilId = districtCouncil._id;
     }
 
     // Cloudinary Upload (Buffer → Stream)
@@ -151,7 +175,7 @@ const createComplaint = async (req, res) => {
     if (areaType === "City") {
       primaryOfficers = await User.find({
         roleId: mcCoRoleId,
-        mcId, // most common case - adjust if you use mcId
+        mcId,
       })
         .select("_id")
         .lean();
@@ -215,33 +239,6 @@ const createComplaint = async (req, res) => {
       );
     }
 
-    // Get roleIds for notifications
-    // const dcRoleId = await getRoleId("DC");
-    // const acRoleId = await getRoleId("AC");
-    // const mcCooRoleId = await getRoleId("MC_CO");
-
-    // // Fetch officers using roleIds
-    // const dcUsers = await User.find({ roleId: dcRoleId, zilaId });
-    // const acUsers = await User.find({ roleId: acRoleId, tehsilId });
-    // const mcCooUsers = await User.find({
-    //   roleId: mcCooRoleId,
-    //   $or: [{ tehsilId }, { districtCouncilId }],
-    // });
-
-    // const officersToNotify = [...dcUsers, ...acUsers, ...mcCooUsers];
-
-    // // Create Notifications
-    // const notifications = officersToNotify.map((officer) => ({
-    //   userId: officer._id,
-    //   title: "New Complaint Submitted",
-    //   message: `A new complaint has been submitted in ${areaType} area (${locationName})`,
-    //   complaintId: complaint._id,
-    // }));
-
-    // if (notifications.length > 0) {
-    //   await Notification.insertMany(notifications);
-    // }
-
     // Success response
     return res.status(201).json({
       success: true,
@@ -290,7 +287,7 @@ const getComplainOfUserById = async (req, res) => {
       return res.status(400).json({ message: "Uer is not found" });
     }
 
-    const complaint = await ComplaintById(ComplaintId);
+    const complaint = await Complaint.findById(ComplaintId);
     if (!complaint) {
       return res.status(400).json({ message: "Complaint not found" });
     }
@@ -440,6 +437,73 @@ const getUSERNotifications = async (req, res) => {
   }
 };
 
+const getUserStats = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const [
+      totalComplaints,
+      pending,
+      inProgress,
+      completedOrClosed,
+      // You can add more if needed
+    ] = await Promise.all([
+      // Total complaints created by this user
+      Complaint.countDocuments({ createdByVolunteerId: userId }),
+
+      // Pending
+      Complaint.countDocuments({
+        createdByVolunteerId: userId,
+        status: "pending",
+      }),
+
+      // In Progress
+      Complaint.countDocuments({
+        createdByVolunteerId: userId,
+        status: "progress",
+      }),
+
+      // Completed OR Closed (most common final states)
+      Complaint.countDocuments({
+        createdByVolunteerId: userId,
+        status: { $in: ["completed", "closed"] },
+      }),
+
+      // Optional: you can add more categories like rejected, delayed, resolved, etc.
+    ]);
+
+    // Optional: Get recent complaints (last 5)
+    const recentComplaints = await Complaint.find({
+      createdByVolunteerId: userId,
+    })
+      .populate("categoryId", "name")
+      .sort("-createdAt")
+      .limit(5)
+      .select("title status createdAt categoryId locationName");
+
+    res.status(200).json({
+      success: true,
+      message: "User statistics fetched successfully",
+      data: {
+        stats: {
+          totalComplaints,
+          pending,
+          inProgress,
+          completedOrClosed,
+          // resolved, rejected, delayed... → add if needed
+        },
+        recentComplaints,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching user statistics",
+      error: error.message,
+    });
+  }
+};
 module.exports = {
   createComplaint,
   getComplainsOfUSER,
@@ -447,4 +511,5 @@ module.exports = {
   deleteComplaint,
   getUSERNotifications,
   getComplainOfUserById,
+  getUserStats,
 };
