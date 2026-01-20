@@ -5,40 +5,34 @@ const streamifier = require("streamifier");
 // ========================================
 // 1. Get All Assigned Complaints
 // ========================================
-const mongoose = require('mongoose'); // Make sure this is imported at the top
+const mongoose = require("mongoose"); // Make sure this is imported at the top
 
 const getAssignedComplaints = async (req, res) => {
   try {
     const employeeId = req.user._id; // From auth middleware
     const { status, page = 1, limit = 10, sort = "-createdAt" } = req.query;
 
-    console.log("========== DEBUG START ==========");
-    console.log("1. Employee ID from req.user:", employeeId);
-    console.log("2. Employee ID type:", typeof employeeId);
-
     // Build filter with ObjectId conversion
-    const filter = { 
-      assignedToUserId: new mongoose.Types.ObjectId(employeeId) // ← Convert to ObjectId
+    const filter = {
+      assignedToUserId: new mongoose.Types.ObjectId(employeeId), // ← Convert to ObjectId
     };
-    
+
     if (status && status !== "ALL") {
       filter.status = status;
     }
 
-    console.log("3. Filter query:", JSON.stringify(filter, null, 2));
-
     // Check total complaints assigned to this user
-    const totalAssigned = await Complaint.countDocuments({ 
-      assignedToUserId: new mongoose.Types.ObjectId(employeeId) 
+    const totalAssigned = await Complaint.countDocuments({
+      assignedToUserId: new mongoose.Types.ObjectId(employeeId),
     });
-    console.log("4. Total complaints assigned to user:", totalAssigned);
 
     // If no complaints, check what's in the database
     if (totalAssigned === 0) {
-      const sampleWithAssignment = await Complaint.find({ 
-        assignedToUserId: { $exists: true, $ne: null } 
-      }).limit(3).select("assignedToUserId status title");
-      console.log("5. Sample complaints with assignments:", JSON.stringify(sampleWithAssignment, null, 2));
+      const sampleWithAssignment = await Complaint.find({
+        assignedToUserId: { $exists: true, $ne: null },
+      })
+        .limit(3)
+        .select("assignedToUserId status title");
     }
 
     // Pagination
@@ -55,9 +49,6 @@ const getAssignedComplaints = async (req, res) => {
       .limit(parseInt(limit))
       .skip(skip)
       .lean();
-
-    console.log("6. Complaints fetched:", complaints.length);
-    console.log("========== DEBUG END ==========");
 
     // Total count for pagination
     const total = await Complaint.countDocuments(filter);

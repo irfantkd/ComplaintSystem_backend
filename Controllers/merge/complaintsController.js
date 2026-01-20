@@ -72,8 +72,6 @@ async function getJurisdictionFilterAndPopulate(user) {
         { path: "assignedToUserId", select: "name phone" },
       ];
 
-      
-
       result.extraResponse = {
         requestedBy: {
           userId: user._id,
@@ -84,32 +82,32 @@ async function getJurisdictionFilterAndPopulate(user) {
       break;
 
     case "DC":
-case "DEPUTY_COMMISSIONER":
-  if (!user.zilaId) {
-    throw new Error("District (zila) not assigned to this DC");
-  }
+    case "DEPUTY_COMMISSIONER":
+      if (!user.zilaId) {
+        throw new Error("District (zila) not assigned to this DC");
+      }
 
-  result.baseQuery = { zilaId: user.zilaId };
+      result.baseQuery = { zilaId: user.zilaId };
 
-  result.specialActions = async (query) => {
-    await Complaint.updateMany(
-      { ...query, seen: false },
-      { $set: { seen: true, updatedAt: new Date() } }
-    );
-  };
+      result.specialActions = async (query) => {
+        await Complaint.updateMany(
+          { ...query, seen: false },
+          { $set: { seen: true, updatedAt: new Date() } }
+        );
+      };
 
-  result.populate = [
-    { path: "createdByVolunteerId", select: "name username" },
-    { path: "categoryId", select: "name" },
-    { path: "zilaId", select: "name" },        // ← ADD THIS
-    { path: "tehsilId", select: "name" },      // ← ADD THIS
-    { path: "assignedToUserId", select: "name username roleId" }, // ← OPTIONAL: Add this too
-  ];
+      result.populate = [
+        { path: "createdByVolunteerId", select: "name username" },
+        { path: "categoryId", select: "name" },
+        { path: "zilaId", select: "name" }, // ← ADD THIS
+        { path: "tehsilId", select: "name" }, // ← ADD THIS
+        { path: "assignedToUserId", select: "name username roleId" }, // ← OPTIONAL: Add this too
+      ];
 
-  result.extraResponse = {
-    filtersApplied: {},
-  };
-  break;
+      result.extraResponse = {
+        filtersApplied: {},
+      };
+      break;
 
     case "DISTRICT_COUNCIL_OFFICER":
     case "DCO":
@@ -146,38 +144,31 @@ const getMyJurisdictionComplaints = async (req, res) => {
       "roleId zilaId tehsilId mcId"
     );
 
-    console.log("========== DEBUG START ==========");
-    console.log("1. User ID:", req.user._id);
-    console.log("2. User found:", JSON.stringify(user, null, 2));
-
     if (!user?.roleId) {
       return res.status(403).json({ message: "Role not assigned" });
     }
 
     // Step 2: Get role name
     const roleName = await getRoleNameById(user.roleId);
-    console.log("3. Role name:", roleName);
 
     // Step 3: Check what complaints exist in DB
     const allComplaints = await Complaint.countDocuments({});
-    console.log("4. Total complaints in database:", allComplaints);
 
     // Step 4: Check complaints for this user's jurisdiction
     let jurisdictionQuery = {};
     if (user.zilaId) {
       jurisdictionQuery.zilaId = user.zilaId;
       const zilaComplaints = await Complaint.countDocuments(jurisdictionQuery);
-      console.log("5. Complaints in user's zila:", zilaComplaints);
     }
     if (user.tehsilId) {
       jurisdictionQuery.tehsilId = user.tehsilId;
-      const tehsilComplaints = await Complaint.countDocuments(jurisdictionQuery);
-      console.log("6. Complaints in user's tehsil:", tehsilComplaints);
+      const tehsilComplaints = await Complaint.countDocuments(
+        jurisdictionQuery
+      );
     }
 
     // Step 5: Get config
     const config = await getJurisdictionFilterAndPopulate(user);
-    console.log("7. Config baseQuery:", JSON.stringify(config.baseQuery, null, 2));
 
     let filterQuery = { ...config.baseQuery };
 
@@ -214,17 +205,12 @@ const getMyJurisdictionComplaints = async (req, res) => {
       }
     }
 
-    console.log("8. Final filterQuery:", JSON.stringify(filterQuery, null, 2));
-    console.log("9. Query params:", JSON.stringify(req.query, null, 2));
-
     // Count matching documents
     const matchingCount = await Complaint.countDocuments(filterQuery);
-    console.log("10. Complaints matching filterQuery:", matchingCount);
 
     // If no complaints found, let's see what's actually in the DB
     if (matchingCount === 0) {
       const sampleComplaints = await Complaint.find({}).limit(3).lean();
-      console.log("11. Sample complaints from DB:", JSON.stringify(sampleComplaints, null, 2));
     }
 
     // Run special actions
@@ -237,10 +223,8 @@ const getMyJurisdictionComplaints = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    console.log("12. Pagination - page:", page, "limit:", limit, "skip:", skip);
-
     const totalDocs = await Complaint.countDocuments(filterQuery);
-    
+
     let complaintsQuery = Complaint.find(filterQuery)
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -248,14 +232,12 @@ const getMyJurisdictionComplaints = async (req, res) => {
 
     // Apply population
     if (config.populate && config.populate.length > 0) {
-      config.populate.forEach(pop => {
+      config.populate.forEach((pop) => {
         complaintsQuery = complaintsQuery.populate(pop);
       });
     }
 
     const complaints = await complaintsQuery.lean();
-    console.log("13. Complaints fetched:", complaints.length);
-    console.log("========== DEBUG END ==========");
 
     const totalPages = Math.ceil(totalDocs / limit);
 
@@ -287,7 +269,6 @@ const getMyJurisdictionComplaints = async (req, res) => {
             : null,
       };
     }
-    
 
     return res.json(response);
   } catch (error) {
@@ -320,11 +301,10 @@ async function getRoleNameById(roleId) {
   return roleCache[roleId.toString()] || null;
 }
 
-
 const getComplaintById = async (req, res) => {
   try {
     const { complaintId } = req.params;
-    
+
     if (!complaintId) {
       return res.status(400).json({
         success: false,
@@ -338,29 +318,27 @@ const getComplaintById = async (req, res) => {
     );
 
     if (!user?.roleId) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         success: false,
-        message: "Role not assigned" 
+        message: "Role not assigned",
       });
     }
 
     // Step 2: Get role-based configuration (jurisdiction filters & population)
     const config = await getJurisdictionFilterAndPopulate(user);
-    
+
     // Step 3: Build query with jurisdiction validation
     const query = {
       _id: complaintId,
       ...config.baseQuery, // This adds zilaId/tehsilId/areaType based on role
     };
 
-    console.log("Fetching complaint with query:", JSON.stringify(query, null, 2));
-
     // Step 4: Build and execute query with population
     let complaintQuery = Complaint.findOne(query);
 
     // Apply role-based population
     if (config.populate && config.populate.length > 0) {
-      config.populate.forEach(pop => {
+      config.populate.forEach((pop) => {
         complaintQuery = complaintQuery.populate(pop);
       });
     }
@@ -371,7 +349,8 @@ const getComplaintById = async (req, res) => {
     if (!complaint) {
       return res.status(404).json({
         success: false,
-        message: "Complaint not found or you don't have permission to access it",
+        message:
+          "Complaint not found or you don't have permission to access it",
       });
     }
 
@@ -391,7 +370,6 @@ const getComplaintById = async (req, res) => {
       complaint: complaint,
       ...config.extraResponse,
     });
-
   } catch (error) {
     console.error("getComplaintById error:", error);
     const status =
@@ -410,4 +388,3 @@ module.exports = {
   getMyJurisdictionComplaints,
   getComplaintById, // ← Add this
 };
-

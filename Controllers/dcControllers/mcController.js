@@ -1,7 +1,7 @@
 const MCModel = require("../../models/MCModel");
 const userModel = require("../../models/usersModel");
 const Role = require("../../models/roleModels");
-const mongoose = require('mongoose')
+const mongoose = require("mongoose");
 
 const getRoleId = async (roleName) => {
   const roleConfig = await Role.findOne();
@@ -40,7 +40,7 @@ const createMC = async (req, res) => {
 
 const deleteMc = async (req, res) => {
   try {
-    const roleId =await getRoleId("DC");
+    const roleId = await getRoleId("DC");
     const user = await userModel.findById(req.user.id);
 
     if (user.roleId.toString() !== roleId) {
@@ -85,8 +85,6 @@ const getAllMcForDc = async (req, res) => {
   try {
     const roleId = await getRoleId("DC"); // ✅ Added await
     const user = await userModel.findById(req.user.id);
-    console.log("roleId:", roleId);
-    console.log("user.roleId:", user.roleId.toString());
 
     if (user.roleId.toString() !== roleId) {
       return res.status(403).json({
@@ -94,8 +92,8 @@ const getAllMcForDc = async (req, res) => {
       });
     }
     const mcs = await MCModel.find({ zilaId: user.zilaId })
-    .populate("tehsilId", "name")
-      .populate("zilaId", "name"); 
+      .populate("tehsilId", "name")
+      .populate("zilaId", "name");
     return res
       .status(200)
       .json({ message: "Data fetched successfully", data: mcs });
@@ -106,7 +104,6 @@ const getAllMcForDc = async (req, res) => {
     });
   }
 };
-
 
 const getMcByIdForDc = async (req, res) => {
   try {
@@ -146,7 +143,7 @@ const updateMcForDc = async (req, res) => {
   try {
     const { mcId } = req.params;
     const updates = req.body;
-    const roleId =await getRoleId("DC");
+    const roleId = await getRoleId("DC");
     const user = await userModel.findById(req.user.id);
 
     if (user.roleId.toString() !== roleId) {

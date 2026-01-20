@@ -18,6 +18,10 @@ const notificationSchema = new mongoose.Schema({
     ref: "Tehsil",
   },
   isRead: { type: Boolean, default: false },
+  roleId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Role",
+  },
 
   createdAt: { type: Date, default: Date.now },
 });

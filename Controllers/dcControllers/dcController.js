@@ -6,6 +6,7 @@ const Zila = require("../../models/zilaModel");
 const Tehsil = require("../../models/tehsilModel");
 const MC = require("../../models/MCModel");
 const Role = require("../../models/roleModels");
+const notification = require("../../models/notificationModel");
 
 /**
  * Helper: get roleId by role name
@@ -44,6 +45,12 @@ const createUser = async (req, res) => {
     if (!name || !username || !password || !phone || !roleId || !zilaId) {
       return res.status(400).json({
         message: "Missing required fields",
+      });
+    }
+
+    if (!tehsilId && !mcId && !districtCouncilId) {
+      return res.status(400).json({
+        message: "One field is Required(tehsilId , mcId or districtCouncilId)",
       });
     }
 
@@ -251,7 +258,7 @@ const getComplaintByIdForDC = async (req, res) => {
     const complaint = await Complaint.findOne({
       _id: complaintId,
     });
-    
+
     if (!complaint) {
       return res
         .status(404)
@@ -272,12 +279,91 @@ const getComplaintByIdForDC = async (req, res) => {
   }
 };
 
+// const approveResolutionForDC = async (req, res) => {
+//   try {
+//     const dcUser = req.user;
+//     const dcRoleId = await getRoleId("DC");
+//     const { complaintId } = req.params;
+
+//     if (dcUser.roleId.toString() !== dcRoleId) {
+//       return res.status(403).json({ message: "Access denied. DC only." });
+//     }
+
+//     const complaint = await Complaint.findById(complaintId);
+//     if (!complaint) {
+//       return res.status(404).json({ message: "Complaint not found" });
+//     }
+
+//     if (complaint.zilaId.toString() !== dcUser.zilaId.toString()) {
+//       return res.status(403).json({
+//         message: "Cannot approve complaint from different Zila",
+//       });
+//     }
+
+//     if (complaint.status !== "resolved") {
+//       return res.status(400).json({
+//         message: "Only RESOLVED complaints can be approved",
+//       });
+//     }
+
+//     complaint.status = "closed";
+//     complaint.updatedAt = new Date();
+//     await complaint.save();
+//     //notification
+//     const io = req.app.get("io");
+
+//     const notificationPayload = {
+//       userId: dcUser._id,
+//       title: "Your Complaint has been closed",
+//       message: "Your complaint has been closed by DC",
+//       complaintId: complaintId,
+//       areaType: "City",
+//       locationName: complaint.locationName,
+//       createdAt: new Date().toISOString(),
+//       isRead: false,
+//     };
+//     io.to(Complaint.createdByVolunteerId).emit(
+//       "new-notification",
+//       notificationPayload
+//     );
+//     const notificationData = {
+//       userId: Complaint.createdByVolunteerId,
+//       roleId: Complaint.createdByVolunteerId,
+//       title: "Your Complaint has been closed",
+//       message: "Your complaint has been closed by DC",
+//       complaintId: complaintId,
+//       areaType: "City",
+//       locationName: complaint.locationName,
+//       createdAt: new Date().toISOString(),
+//       isRead: false,
+//     };
+//     await notification.create(notificationData);
+
+//     res
+//       .status(200)
+//       .json({ message: "Complaint status updated successfully", complaint });
+//     res.status(200).json({
+//       message: "Complaint resolution approved successfully",
+//       complaint: {
+//         id: complaint._id,
+//         status: complaint.status,
+//         title: complaint.title,
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Error updating complaint status:", error);
+//     console.error("Error approving resolution:", error);
+//     res.status(500).json({ message: "Server error", error: error.message });
+//   }
+// };
+
 const approveResolutionForDC = async (req, res) => {
   try {
     const dcUser = req.user;
     const dcRoleId = await getRoleId("DC");
     const { complaintId } = req.params;
 
+    // Authorization checks
     if (dcUser.roleId.toString() !== dcRoleId) {
       return res.status(403).json({ message: "Access denied. DC only." });
     }
@@ -295,35 +381,71 @@ const approveResolutionForDC = async (req, res) => {
 
     if (complaint.status !== "resolved") {
       return res.status(400).json({
-        message: "Only RESOLVED complaints can be approved",
+        message: "Only RESOLVED complaints can be approved/closed by DC",
       });
     }
 
+    // Update complaint
     complaint.status = "closed";
+
     complaint.updatedAt = new Date();
     await complaint.save();
 
-    res
-      .status(200)
-      .json({ message: "Complaint status updated successfully", complaint });
-    res.status(200).json({
-      message: "Complaint resolution approved successfully",
+    // ── Notification part ───────────────────────────────────────
+    const io = req.app.get("io");
+    const volunteerId = complaint.createdByVolunteerId.toString(); // ← This is the correct user ID
+
+    const notificationPayload = {
+      userId: volunteerId,
+      title: "Your Complaint has been closed",
+      message: "Your complaint has been reviewed and closed by DC",
+      complaintId: complaintId,
+      areaType: complaint.areaType,
+      locationName: complaint.locationName,
+      createdAt: new Date().toISOString(),
+      isRead: false,
+    };
+
+    // 1. Real-time notification via socket
+    io.to(volunteerId).emit("new-notification", notificationPayload);
+    console.log("Notification sent to volunteer:", volunteerId);
+
+    // 2. Save to database (if you have Notification model)
+    await notification.create({
+      userId: volunteerId,
+      title: notificationPayload.title,
+      message: notificationPayload.message,
+      complaintId: complaint._id,
+      areaType: complaint.areaType,
+      locationName: complaint.locationName,
+      isRead: false,
+    });
+
+    // Final response (only one!)
+    return res.status(200).json({
+      success: true,
+      message: "Complaint resolution approved and closed successfully",
       complaint: {
-        id: complaint._id,
+        _id: complaint._id,
         status: complaint.status,
         title: complaint.title,
+        resolutionNote: complaint.resolutionNote,
+        remarkByDc: complaint.remarkByDc,
       },
     });
   } catch (error) {
-    console.error("Error updating complaint status:", error);
-    console.error("Error approving resolution:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    console.error("Error approving resolution by DC:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while approving resolution",
+      error: error.message,
+    });
   }
 };
-
 /**
  * Reject complaint resolution (DC)
  */
+
 const rejectResolutionForDC = async (req, res) => {
   try {
     const dcUser = req.user;
@@ -563,33 +685,115 @@ const deleteUserForDC = async (req, res) => {
 const updateUserDetails = async (req, res) => {
   try {
     const dcUser = req.user;
-    if (!(await checkIsDC(dcUser)))
+    if (!(await checkIsDC(dcUser))) {
       return res.status(403).json({ message: "Access denied. DC only." });
+    }
 
     const { userId } = req.params;
-    const { name, username, password, roleId, zilaId, tehsilId, mcId } =
-      req.body;
+    const {
+      name,
+      username,
+      password,
+      roleId,
+      zilaId,
+      tehsilId,
+      mcId,
+      districtCouncilId,
+    } = req.body;
 
     const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-    user.name = name || user.name;
-    user.username = username || user.username;
+    // 1. At least one location field
+    if (!tehsilId && !mcId && !districtCouncilId) {
+      return res.status(400).json({
+        message:
+          "At least one of tehsilId, mcId, or districtCouncilId is required",
+      });
+    }
+
+    // 2. Username uniqueness (only if username is being changed)
+    if (username && username !== user.username) {
+      const existing = await User.findOne({ username });
+      if (existing) {
+        return res.status(400).json({ message: "Username already exists" });
+      }
+    }
+
+    // 3. Role-specific rules (AC must have tehsilId)
+    const AC_ROLE_ID = await getRoleId("AC");
+    const newRoleId = roleId || user.roleId;
+
+    if (newRoleId.toString() === AC_ROLE_ID.toString()) {
+      const finalTehsilId = tehsilId ?? user.tehsilId;
+      if (!finalTehsilId) {
+        return res.status(400).json({
+          message: "AC role requires tehsilId",
+        });
+      }
+    }
+
+    // 4. Validate referenced documents (if provided/changed)
+    if (zilaId && zilaId !== user.zilaId?.toString()) {
+      const zila = await Zila.findById(zilaId);
+      if (!zila) return res.status(400).json({ message: "Invalid Zila" });
+    }
+
+    if (tehsilId && tehsilId !== user.tehsilId?.toString()) {
+      const tehsil = await Tehsil.findById(tehsilId);
+      if (!tehsil) return res.status(400).json({ message: "Invalid Tehsil" });
+    }
+
+    if (mcId && mcId !== user.mcId?.toString()) {
+      const mc = await MC.findById(mcId);
+      if (!mc) return res.status(400).json({ message: "Invalid MC" });
+    }
+
+    // 5. Apply updates (only if provided)
+    if (name) user.name = name;
+    if (username) user.username = username;
     if (password) {
       const salt = await bcrypt.genSalt(10);
       user.password = await bcrypt.hash(password, salt);
     }
-    user.roleId = roleId || user.roleId;
-    user.zilaId = zilaId || user.zilaId;
-    user.tehsilId = tehsilId || user.tehsilId;
-    user.mcId = mcId || user.mcId;
+    if (roleId) user.roleId = roleId;
+    if (zilaId) user.zilaId = zilaId;
+    if (tehsilId !== undefined) user.tehsilId = tehsilId || undefined; // allow clearing
+    if (mcId !== undefined) user.mcId = mcId || undefined;
+    if (districtCouncilId !== undefined)
+      user.districtCouncilId = districtCouncilId || undefined;
 
     await user.save();
 
-    res.status(200).json({ message: "User updated successfully", user });
+    // 6. Populate like in create (better response)
+    const populatedUser = await User.findById(user._id)
+      .populate("zilaId", "name")
+      .populate("tehsilId", "name")
+      .populate("mcId", "name");
+
+    return res.status(200).json({
+      message: "User updated successfully",
+      user: {
+        id: populatedUser._id,
+        name: populatedUser.name,
+        username: populatedUser.username,
+        phone: populatedUser.phone,
+        roleId: populatedUser.roleId,
+        zila: populatedUser.zilaId,
+        tehsil: populatedUser.tehsilId,
+        mc: populatedUser.mcId,
+        isActive: populatedUser.isActive,
+        createdAt: populatedUser.createdAt,
+      },
+    });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    console.error("Update User Error:", error);
+    return res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
   }
 };
 

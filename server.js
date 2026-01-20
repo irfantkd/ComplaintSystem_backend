@@ -21,10 +21,10 @@ const mcCooRoutes = require("./Routes/mcCooRoutes");
 const employeeRoutes = require("./Routes/employeeRoutes");
 const complaintRoutes = require("./Routes/complaintRoutes");
 const notificationRoutes = require("./Routes/notificationRoutes");
-
+const zilaRoutes = require("./Routes/zilaRoutes");
 const io = new Server(server, {
   cors: {
-    origin: ["http://192.168.1.60:3000", "http://localhost:3000"],
+    origin: "*",
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -51,6 +51,7 @@ app.use("/api", employeeRoutes);
 app.use("/api", dcRoutes);
 app.use("/api", complaintRoutes);
 app.use("/api", notificationRoutes);
+app.use("/api", zilaRoutes);
 
 // Basic socket connection handling
 io.on("connection", (socket) => {
