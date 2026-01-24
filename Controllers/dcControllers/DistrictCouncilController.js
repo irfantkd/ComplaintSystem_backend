@@ -1,18 +1,16 @@
-const DistrictCouncil = require('../../models/DistrictCouncilModel');
-const User = require('../../models/usersModel');
-const Zila = require('../../models/zilaModel');
-const Role = require('../../models/roleModels')
-
-
+const DistrictCouncil = require("../../models/DistrictCouncilModel");
+const User = require("../../models/usersModel");
+const Zila = require("../../models/zilaModel");
+const Role = require("../../models/roleModels");
+const { logActivity } = require("../../utils/activityLogger");
 
 const getRoleId = async (roleName) => {
   const roleConfig = await Role.findOne();
-  if (!roleConfig) throw new Error('RoleConfig not found');
-  const role = roleConfig.roles.find(r => r.name === roleName);
+  if (!roleConfig) throw new Error("RoleConfig not found");
+  const role = roleConfig.roles.find((r) => r.name === roleName);
   if (!role) throw new Error(`Role "${roleName}" not found`);
   return role._id.toString();
 };
-
 
 /**
  * Create a new District Council (Only DC can create)
@@ -55,6 +53,17 @@ const createDistrictCouncil = async (req, res) => {
       employeeIds: [],
     });
 
+    await logActivity({
+      action: "created district council",
+      performedBy: req.user._id,
+      targetId: districtCouncil._id,
+      targetType: "DistrictCouncil",
+      meta: {
+        title: districtCouncil.name,
+        districtCouncilId: districtCouncil._id.toString(),
+      },
+    });
+
     res.status(201).json({
       message: "District Council created successfully",
       districtCouncil,
@@ -64,7 +73,6 @@ const createDistrictCouncil = async (req, res) => {
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
-
 
 /**
  * Get all District Councils (with optional filters)
@@ -213,7 +221,6 @@ const deleteDistrictCouncil = async (req, res) => {
   }
 };
 
-
 /**
  * Assign Officer to District Council
  */
@@ -247,6 +254,17 @@ const assignOfficerToCouncil = async (req, res) => {
     districtCouncil.officerId = officerId;
     await districtCouncil.save();
 
+    await logActivity({
+      action: "assigned officer to district council",
+      performedBy: req.user._id,
+      targetId: districtCouncil._id,
+      targetType: "DistrictCouncil",
+      meta: {
+        title: districtCouncil.name,
+        districtCouncilId: districtCouncil._id.toString(),
+      },
+    });
+
     res.status(200).json({
       message: "Officer assigned successfully",
       districtCouncil,
@@ -256,7 +274,6 @@ const assignOfficerToCouncil = async (req, res) => {
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
-
 
 /**
  * Add Employee to District Council
@@ -291,8 +308,19 @@ const addEmployeeToCouncil = async (req, res) => {
 
     const updatedCouncil = await DistrictCouncil.findById(councilId).populate(
       "employeeIds",
-      "name username role"
+      "name username role",
     );
+
+    await logActivity({
+      action: "added employee to district council",
+      performedBy: req.user._id,
+      targetId: districtCouncil._id,
+      targetType: "DistrictCouncil",
+      meta: {
+        title: districtCouncil.name,
+        districtCouncilId: districtCouncil._id.toString(),
+      },
+    });
 
     res.status(200).json({
       message: "Employee added successfully",
@@ -303,7 +331,6 @@ const addEmployeeToCouncil = async (req, res) => {
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
-
 
 /**
  * Remove Employee from District Council
@@ -327,15 +354,26 @@ const removeEmployeeFromCouncil = async (req, res) => {
     }
 
     districtCouncil.employeeIds = districtCouncil.employeeIds.filter(
-      id => id.toString() !== employeeId
+      (id) => id.toString() !== employeeId,
     );
 
     await districtCouncil.save();
 
     const updatedCouncil = await DistrictCouncil.findById(councilId).populate(
       "employeeIds",
-      "name username role"
+      "name username role",
     );
+
+    await logActivity({
+      action: "removed employee from district council",
+      performedBy: req.user._id,
+      targetId: districtCouncil._id,
+      targetType: "DistrictCouncil",
+      meta: {
+        title: districtCouncil.name,
+        districtCouncilId: districtCouncil._id.toString(),
+      },
+    });
 
     res.status(200).json({
       message: "Employee removed successfully",
@@ -346,7 +384,6 @@ const removeEmployeeFromCouncil = async (req, res) => {
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
-
 
 module.exports = {
   createDistrictCouncil,

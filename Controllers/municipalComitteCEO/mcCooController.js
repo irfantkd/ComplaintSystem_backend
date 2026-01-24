@@ -73,7 +73,7 @@ const getComplaintsForMcCoo = async (req, res) => {
 
       if (req.query.categoryId) {
         filterQuery.categoryId = new mongoose.Types.ObjectId(
-          req.query.categoryId
+          req.query.categoryId,
         );
       }
 
@@ -305,7 +305,7 @@ const assignTaskToMcEmployee = async (req, res) => {
       await complaintDoc.save();
       await complaintDoc.populate(
         "assignedToUserId",
-        "name phone email username"
+        "name phone email username",
       );
       const mcEmployeeRoleId = await getRoleId("MC_EMPLOYEE");
       if (!mcEmployeeRoleId) {
@@ -339,6 +339,16 @@ const assignTaskToMcEmployee = async (req, res) => {
       };
 
       await notification.create(notificationData);
+      await logActivity({
+        action: "assigned task to MC employee",
+        performedBy: req.user._id,
+        targetId: complaintId,
+        targetType: "Complaint",
+        meta: {
+          title: complaintDoc.title,
+          complaintId: complaintId,
+        },
+      });
 
       return res.status(200).json({
         success: true,

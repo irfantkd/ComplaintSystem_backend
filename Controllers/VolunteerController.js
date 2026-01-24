@@ -3,12 +3,12 @@ const Notification = require("../models/notificationModel");
 const cloudinary = require("../config/cloudinaryConfig");
 const streamifier = require("streamifier");
 const User = require("../models/usersModel");
-const Role = require("../models/roleModels");
-const zilaModel = require("../models/zilaModel");
+
 const { getRoleId } = require("../utils/roleHelpers");
 const Tehsil = require("../models/tehsilModel");
 const MC = require("../models/MCModel");
 const DistrictCouncil = require("../models/DistrictCouncilModel");
+const { logActivity } = require("../utils/activityLogger");
 
 const createComplaint = async (req, res) => {
   try {
@@ -34,7 +34,7 @@ const createComplaint = async (req, res) => {
     const USERRoleId = await getRoleId("USER");
     if (user.roleId.toString() !== USERRoleId) {
       return res.status(403).json({
-        message: "Only USERs can create complaints",
+        message: "Only users can create complaints",
       });
     }
 
@@ -114,7 +114,7 @@ const createComplaint = async (req, res) => {
           (error, result) => {
             if (result) resolve(result);
             else reject(error);
-          }
+          },
         );
         streamifier.createReadStream(buffer).pipe(stream);
       });
@@ -142,6 +142,18 @@ const createComplaint = async (req, res) => {
       status: "pending",
     });
 
+    await logActivity({
+      action: "registered new complaint",
+      performedBy: req.user._id,
+      targetId: complaint._id,
+      targetType: "Complaint",
+      meta: {
+        title: title || "Untitled complaint",
+        descriptionSnippet:
+          description.substring(0, 80) + (description.length > 80 ? "..." : ""),
+        complaintId: complaint._id.toString(),
+      },
+    });
     // ── Notification Logic ──────────────────────────────────────────────────────
 
     // Get required role IDs
@@ -235,7 +247,7 @@ const createComplaint = async (req, res) => {
       });
 
       console.log(
-        `Real-time notification sent to ${finalOfficerIds.length} officers`
+        `Real-time notification sent to ${finalOfficerIds.length} officers`,
       );
     }
 
@@ -264,7 +276,11 @@ const getComplainsOfUSER = async (req, res) => {
 
     const complaints = await Complaint.find({
       createdByVolunteerId: user.id,
-    }).sort({ createdAt: -1 });
+    })
+      .sort({ createdAt: -1 })
+      .populate({ path: "categoryId", select: "name" });
+
+    console.log(complaints);
 
     return res.status(200).json({
       success: true,
@@ -287,7 +303,10 @@ const getComplainOfUserById = async (req, res) => {
       return res.status(400).json({ message: "Uer is not found" });
     }
 
-    const complaint = await Complaint.findById(ComplaintId);
+    const complaint = await Complaint.findById(ComplaintId).populate({
+      path: "categoryId",
+      select: "name",
+    });
     if (!complaint) {
       return res.status(400).json({ message: "Complaint not found" });
     }
@@ -307,7 +326,10 @@ const updateComplaint = async (req, res) => {
     const USERId = req.user.id;
     const { title, description, categoryId } = req.body;
 
-    const complaint = await Complaint.findById(complaintId);
+    const complaint = await Complaint.findById(complaintId).populate({
+      path: "categoryId",
+      select: "name",
+    });
 
     if (!complaint) {
       return res.status(404).json({

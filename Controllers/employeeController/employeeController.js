@@ -1,6 +1,7 @@
 const Complaint = require("../../models/complaintModel");
 const cloudinary = require("../../config/cloudinaryConfig");
 const streamifier = require("streamifier");
+const { logActivity } = require("../../utils/activityLogger");
 
 // ========================================
 // 1. Get All Assigned Complaints
@@ -171,7 +172,7 @@ const submitResolutionWithImage = async (req, res) => {
           (error, result) => {
             if (result) resolve(result);
             else reject(error);
-          }
+          },
         );
         streamifier.createReadStream(buffer).pipe(stream);
       });
@@ -196,6 +197,16 @@ const submitResolutionWithImage = async (req, res) => {
     };
 
     await complaint.save();
+    await logActivity({
+      action: "resolved complaint by employee",
+      performedBy: req.user._id,
+      targetId: complaint._id,
+      targetType: "Complaint",
+      meta: {
+        title: complaint.title,
+        complaintId: complaint._id.toString(),
+      },
+    });
 
     res.status(200).json({
       success: true,

@@ -7,6 +7,7 @@ const Tehsil = require("../../models/tehsilModel");
 const MC = require("../../models/MCModel");
 const Role = require("../../models/roleModels");
 const notification = require("../../models/notificationModel");
+const { logActivity } = require("../../utils/activityLogger");
 
 /**
  * Helper: get roleId by role name
@@ -113,6 +114,19 @@ const createUser = async (req, res) => {
       zilaId,
       tehsilId: tehsilId || undefined,
       mcId: mcId || undefined,
+      districtCouncilId: districtCouncilId || undefined,
+    });
+
+    await logActivity({
+      action: "created new user",
+      performedBy: req.user._id,
+      targetId: user._id,
+      targetType: "User",
+      meta: {
+        username: user.username,
+        name: user.name,
+        roleId: user.roleId.toString(),
+      },
     });
 
     // 7️⃣ Populate relations

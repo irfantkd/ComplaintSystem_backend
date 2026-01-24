@@ -2,6 +2,7 @@ const MCModel = require("../../models/MCModel");
 const userModel = require("../../models/usersModel");
 const Role = require("../../models/roleModels");
 const mongoose = require("mongoose");
+const { logActivity } = require("../../utils/activityLogger");
 
 const getRoleId = async (roleName) => {
   const roleConfig = await Role.findOne();
@@ -31,6 +32,16 @@ const createMC = async (req, res) => {
       return res.status(404).json({ message: "Zila not found" });
     }
     const mc = await MCModel.create({ name, tehsilId, zilaId });
+    await logActivity({
+      action: "created mc",
+      performedBy: req.user._id,
+      targetId: mc._id,
+      targetType: "MC",
+      meta: {
+        title: mc.name,
+        mcId: mc._id.toString(),
+      },
+    });
     res.status(201).json({ message: "MC created successfully", mc });
   } catch (error) {
     console.error(error);
@@ -69,6 +80,16 @@ const deleteMc = async (req, res) => {
         message: "MC not found",
       });
     }
+    await logActivity({
+      action: "deleted mc",
+      performedBy: req.user._id,
+      targetId: mc._id,
+      targetType: "MC",
+      meta: {
+        title: mc.name,
+        mcId: mc._id.toString(),
+      },
+    });
     res.status(200).json({
       message: "Mc deleted successfully",
       deletedMc,
@@ -170,7 +191,7 @@ const updateMcForDc = async (req, res) => {
     const requestedUpdates = Object.keys(updates);
 
     const isValidUpdate = requestedUpdates.every((update) =>
-      allowedUpdates.includes(update)
+      allowedUpdates.includes(update),
     );
 
     if (!isValidUpdate) {

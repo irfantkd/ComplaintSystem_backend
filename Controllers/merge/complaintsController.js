@@ -32,7 +32,7 @@ async function getJurisdictionFilterAndPopulate(user) {
       result.specialActions = async (query) => {
         await Complaint.updateMany(
           { ...query, seen: false },
-          { $set: { seen: true, updatedAt: new Date() } }
+          { $set: { seen: true, updatedAt: new Date() } },
         );
       };
 
@@ -92,7 +92,7 @@ async function getJurisdictionFilterAndPopulate(user) {
       result.specialActions = async (query) => {
         await Complaint.updateMany(
           { ...query, seen: false },
-          { $set: { seen: true, updatedAt: new Date() } }
+          { $set: { seen: true, updatedAt: new Date() } },
         );
       };
 
@@ -141,7 +141,7 @@ const getMyJurisdictionComplaints = async (req, res) => {
   try {
     // Step 1: Check user
     const user = await User.findById(req.user._id).select(
-      "roleId zilaId tehsilId mcId"
+      "roleId zilaId tehsilId mcId",
     );
 
     if (!user?.roleId) {
@@ -162,9 +162,8 @@ const getMyJurisdictionComplaints = async (req, res) => {
     }
     if (user.tehsilId) {
       jurisdictionQuery.tehsilId = user.tehsilId;
-      const tehsilComplaints = await Complaint.countDocuments(
-        jurisdictionQuery
-      );
+      const tehsilComplaints =
+        await Complaint.countDocuments(jurisdictionQuery);
     }
 
     // Step 5: Get config
@@ -314,7 +313,7 @@ const getComplaintById = async (req, res) => {
 
     // Step 1: Get user with jurisdiction data
     const user = await User.findById(req.user._id).select(
-      "roleId zilaId tehsilId mcId"
+      "roleId zilaId tehsilId mcId",
     );
 
     if (!user?.roleId) {
@@ -358,7 +357,7 @@ const getComplaintById = async (req, res) => {
     if (config.specialActions && !complaint.seen) {
       await Complaint.updateOne(
         { _id: complaintId },
-        { $set: { seen: true, updatedAt: new Date() } }
+        { $set: { seen: true, updatedAt: new Date() } },
       );
       complaint.seen = true; // Update local object for response
     }

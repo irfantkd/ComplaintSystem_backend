@@ -2,6 +2,7 @@ const Complaint = require("../models/complaintModel");
 const User = require("../models/usersModel");
 const { paginate } = require("../utils/pagination");
 const Role = require("../models/roleModels");
+const { logActivity } = require("../utils/activityLogger");
 
 /**
  * Helper: Get roleId by role name
@@ -137,6 +138,17 @@ const approveResolution = async (req, res) => {
     complaint.updatedAt = new Date();
     await complaint.save();
 
+    await logActivity({
+      action: "approved complaint resolution",
+      performedBy: req.user._id,
+      targetId: complaint._id,
+      targetType: "Complaint",
+      meta: {
+        title: complaint.title,
+        complaintId: complaint._id.toString(),
+      },
+    });
+
     res.status(200).json({
       message: "Complaint resolution approved successfully",
       complaint: {
@@ -197,6 +209,16 @@ const rejectResolution = async (req, res) => {
     complaint.updatedAt = new Date();
     await complaint.save();
 
+    await logActivity({
+      action: "rejected complaint resolution",
+      performedBy: req.user._id,
+      targetId: complaint._id,
+      targetType: "Complaint",
+      meta: {
+        title: complaint.title,
+        complaintId: complaint._id.toString(),
+      },
+    });
     res.status(200).json({
       message: "Complaint resolution rejected successfully",
       complaint: {

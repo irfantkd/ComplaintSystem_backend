@@ -11,9 +11,6 @@ const seedTehsils = async () => {
     await mongoose.connect(process.env.MONGO_URI);
     console.log("MongoDB Connected");
 
-    await Tehsil.deleteMany({});
-    console.log("Old tehsils removed");
-
     const zila = await Zila.findOne({ name: "Lodhran" });
 
     if (!zila) {

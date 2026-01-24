@@ -3,6 +3,7 @@ const User = require("../../models/usersModel");
 const Role = require("../../models/roleModels");
 const { paginate } = require("../../utils/pagination");
 const notification = require("../../models/notificationModel");
+const { logActivity } = require("../../utils/activityLogger");
 
 // Helper: Get sub-role _id by name
 const getRoleId = async (roleName) => {
@@ -160,7 +161,7 @@ const assignTaskToEmployee = async (req, res) => {
       await complaintDoc.save();
       await complaintDoc.populate(
         "assignedToUserId",
-        "name phone email username"
+        "name phone email username",
       );
 
       //notification
@@ -189,6 +190,16 @@ const assignTaskToEmployee = async (req, res) => {
         title: "New Task Assigned",
         message: messageText,
         complaintId: complaintDoc._id,
+      });
+      await logActivity({
+        action: "assigned task to employee",
+        performedBy: req.user._id,
+        targetId: complaintDoc._id,
+        targetType: "Complaint",
+        meta: {
+          title: complaintDoc.title,
+          complaintId: complaintDoc._id.toString(),
+        },
       });
 
       return res.status(200).json({
@@ -272,7 +283,7 @@ const updateComplaintStatus = async (req, res) => {
       // Special fields for certain statuses
       if (
         ["completed", "resolved", "closed", "resolveByEmployee"].includes(
-          status.toLowerCase()
+          status.toLowerCase(),
         )
       ) {
         complaintDoc.completedAt = new Date();

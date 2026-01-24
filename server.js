@@ -22,6 +22,7 @@ const employeeRoutes = require("./Routes/employeeRoutes");
 const complaintRoutes = require("./Routes/complaintRoutes");
 const notificationRoutes = require("./Routes/notificationRoutes");
 const zilaRoutes = require("./Routes/zilaRoutes");
+const dashboardStatsRoutes = require("./Routes/dashboardStatsRoutes");
 const io = new Server(server, {
   cors: {
     origin: "*",
@@ -52,6 +53,7 @@ app.use("/api", dcRoutes);
 app.use("/api", complaintRoutes);
 app.use("/api", notificationRoutes);
 app.use("/api", zilaRoutes);
+app.use("/api", dashboardStatsRoutes);
 
 // Basic socket connection handling
 io.on("connection", (socket) => {
