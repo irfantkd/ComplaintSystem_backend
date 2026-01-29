@@ -7,7 +7,6 @@ const { formatDistanceToNow } = require("date-fns");
 const Complaint = require("../../models/complaintModel");
 const Activity = require("../../models/activityModel");
 
-// controllers/dashboardController.js
 const getOverview = async (req, res) => {
   try {
     const user = req.user;
@@ -134,7 +133,7 @@ const getRecentComplaints = async (req, res) => {
 
   const formatted = complaints.map((c) => ({
     id: c._id,
-    number: c._id.toString().slice(-6), // or use custom counter
+    number: c._id.toString().slice(-6),
     title: c.title || c.description.slice(0, 60) + "...",
     status: c.status,
     timeAgo: formatDistanceToNow(c.createdAt, { addSuffix: true }),

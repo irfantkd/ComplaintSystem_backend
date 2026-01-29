@@ -159,6 +159,7 @@ const createUser = async (req, res) => {
     });
   }
 };
+
 /**
  * Get complaints for DC
  */
@@ -292,84 +293,6 @@ const getComplaintByIdForDC = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
-// const approveResolutionForDC = async (req, res) => {
-//   try {
-//     const dcUser = req.user;
-//     const dcRoleId = await getRoleId("DC");
-//     const { complaintId } = req.params;
-
-//     if (dcUser.roleId.toString() !== dcRoleId) {
-//       return res.status(403).json({ message: "Access denied. DC only." });
-//     }
-
-//     const complaint = await Complaint.findById(complaintId);
-//     if (!complaint) {
-//       return res.status(404).json({ message: "Complaint not found" });
-//     }
-
-//     if (complaint.zilaId.toString() !== dcUser.zilaId.toString()) {
-//       return res.status(403).json({
-//         message: "Cannot approve complaint from different Zila",
-//       });
-//     }
-
-//     if (complaint.status !== "resolved") {
-//       return res.status(400).json({
-//         message: "Only RESOLVED complaints can be approved",
-//       });
-//     }
-
-//     complaint.status = "closed";
-//     complaint.updatedAt = new Date();
-//     await complaint.save();
-//     //notification
-//     const io = req.app.get("io");
-
-//     const notificationPayload = {
-//       userId: dcUser._id,
-//       title: "Your Complaint has been closed",
-//       message: "Your complaint has been closed by DC",
-//       complaintId: complaintId,
-//       areaType: "City",
-//       locationName: complaint.locationName,
-//       createdAt: new Date().toISOString(),
-//       isRead: false,
-//     };
-//     io.to(Complaint.createdByVolunteerId).emit(
-//       "new-notification",
-//       notificationPayload
-//     );
-//     const notificationData = {
-//       userId: Complaint.createdByVolunteerId,
-//       roleId: Complaint.createdByVolunteerId,
-//       title: "Your Complaint has been closed",
-//       message: "Your complaint has been closed by DC",
-//       complaintId: complaintId,
-//       areaType: "City",
-//       locationName: complaint.locationName,
-//       createdAt: new Date().toISOString(),
-//       isRead: false,
-//     };
-//     await notification.create(notificationData);
-
-//     res
-//       .status(200)
-//       .json({ message: "Complaint status updated successfully", complaint });
-//     res.status(200).json({
-//       message: "Complaint resolution approved successfully",
-//       complaint: {
-//         id: complaint._id,
-//         status: complaint.status,
-//         title: complaint.title,
-//       },
-//     });
-//   } catch (error) {
-//     console.error("Error updating complaint status:", error);
-//     console.error("Error approving resolution:", error);
-//     res.status(500).json({ message: "Server error", error: error.message });
-//   }
-// };
 
 const approveResolutionForDC = async (req, res) => {
   try {

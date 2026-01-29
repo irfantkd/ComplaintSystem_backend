@@ -18,17 +18,6 @@ async function buildRoleBasedMatch(user, options = {}) {
     DISTRICT_COUNCIL_OFFICER: await getRoleId("DISTRICT_COUNCIL_OFFICER"),
   };
 
-  // Debug after awaiting
-  console.log(
-    "Resolved getRoleId('DC')                 →",
-    roleMap.DC?.toString(),
-  );
-  console.log(
-    "Resolved getRoleId('AC')                 →",
-    roleMap.AC?.toString(),
-  );
-  // ... add others if needed
-
   const userRoleIdStr = user.roleId.toString();
 
   let match = {};
